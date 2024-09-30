@@ -6,10 +6,6 @@ class AutoMaze(Script):
     def _on_init(self):
         self.name = "迷宫寻路"
 
-    def _on_update(self):
-        if self.time_is_up():
-            self.cg.map.request_download()
-
     def _on_not_battle(self):
         transports = self.cg.map.file.transports
         if len(transports) > 1:
@@ -19,6 +15,8 @@ class AutoMaze(Script):
                 transports.reverse()
             x, y, o = transports[0]
             self.cg.nav_to(x, y)
+        else:
+            self.cg.map.request_download()
 
 
 class FaLanLogin(Script):

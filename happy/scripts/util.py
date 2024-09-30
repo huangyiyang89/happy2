@@ -12,14 +12,13 @@ class Logger(Script):
     def _on_not_battle(self):
 
         pointer = self.cg.mem.read_int(0x0057A718)
-        data = self.cg.mem.read_string(pointer,encoding="utf-8")
-        content = self.cg.dialog.content
+        data = self.cg.mem.read_string(pointer, encoding="utf-8")
+        dialog_content = self.cg.dialog.content
 
-        if data and data!= last_data:
-            logging.info(data.replace("\n",""))
-            last_data = data
-        
-        if content and content!=last_content:
-            logging.info(content.replace("\n",""))
-            last_content = content
+        if data and data != self.last_data:
+            logging.debug(data.replace("\n", ""))
+            self.last_data = data
 
+        if dialog_content and dialog_content != self.last_content:
+            logging.debug(dialog_content.replace("\n", ""))
+            self.last_content = dialog_content

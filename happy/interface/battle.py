@@ -1,7 +1,7 @@
 import random
 import time
 import math
-
+import logging
 from happy.interface.mem import CgMem, InterfaceBase
 
 
@@ -78,29 +78,33 @@ class Unit:
     @property
     def is_enemy(self):
         return self.position > 9
-    
+
     @property
     def is_uncontrolled(self):
-        flag = self._data_list[9][5]
-        if flag == "2" or flag == "4":
-            return True
+        try:
+            flag = self._data_list[9][5]
+            if flag == "2" or flag == "4":
+                return True
+        except (IndexError, TypeError):
+            logging.warning(f"is_uncontrolled IndexError _data_list = {self._data_list}")
         return False
 
     @property
     def unknown3(self):
         return self._data_list[3]
-    
+
     @property
     def unknown9(self):
         return self._data_list[9]
-    
+
     @property
     def unknown10(self):
         return self._data_list[10]
-    
+
     @property
     def unknown11(self):
         return self._data_list[11]
+
 
 class UnitCollection(InterfaceBase):
     def __init__(self, mem: CgMem) -> None:
@@ -111,7 +115,9 @@ class UnitCollection(InterfaceBase):
     @property
     def _buffer(self):
         index = self.mem.read_int(0x00590754)
-        return self.mem.read_string(0x00591774+index*0x1000, 1000, encoding="big5hkscs")
+        return self.mem.read_string(
+            0x00591774 + index * 0x1000, 1000, encoding="big5hkscs"
+        )
 
     def _update(self):
         if self._buffer == self._buffer_cache:
@@ -121,6 +127,7 @@ class UnitCollection(InterfaceBase):
         for i in range(0, len(data_array) - 12, 12):
             _unit = Unit(data_array[i : i + 12])
             self._units.append(_unit)
+
     @property
     def _update_units(self):
         self._update()
@@ -147,14 +154,16 @@ class UnitCollection(InterfaceBase):
         return self.get(self._pet_position)
 
     def get(self, position):
-        return next((unit for unit in self._update_units if unit.position == position), None)
+        return next(
+            (unit for unit in self._update_units if unit.position == position), None
+        )
 
     @property
     def random_choice_enemy(self):
         excepts = []
         for unit in self._update_units:
             if unit.position > 14:
-                excepts.append(unit.position - 5)           
+                excepts.append(unit.position - 5)
         fronts = [unit for unit in self.enemies if unit.position not in excepts]
         return random.choice(fronts)
 
@@ -379,7 +388,7 @@ class BattlePlayer(InterfaceBase, Unit):
 
     def use_item(self, item, unit: Unit | None = None):
         """使用物品，默认对玩家使用"""
-        index = getattr(item, 'index', item)
+        index = getattr(item, "index", item)
         order = "I|" + hex(index)
         if unit is not None:
             order += "|" + unit.position_hex
@@ -495,7 +504,6 @@ class BattlePet(InterfaceBase, Unit):
 
         self.cast(next(self.skills), units.random_choice_enemy)
 
-        
 
 class Battle(InterfaceBase):
 

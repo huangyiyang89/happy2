@@ -1,9 +1,9 @@
 import time
-from happy.interface.mem import CgMem, InterfaceBase
+from happy.interface.mem import LocationBase
 from happy.util import b62
 
 
-class Dialog(InterfaceBase):
+class Dialog(LocationBase):
 
     @property
     def is_open(self):
@@ -24,22 +24,6 @@ class Dialog(InterfaceBase):
     @property
     def model_62(self) -> str:
         return b62(self.model)
-
-    @property
-    def _x(self):
-        return int(self.mem.read_float(0x00BF6CE8) / 64)
-
-    @property
-    def _y(self):
-        return int(self.mem.read_float(0x00BF6CE4) / 64)
-
-    @property
-    def _x_62(self):
-        return b62(self._x)
-
-    @property
-    def _y_62(self):
-        return b62(self._y)
 
     @property
     def selections(self):
@@ -119,6 +103,11 @@ class Dialog(InterfaceBase):
         )
         self.mem.decode_send(action)
         time.sleep(0.5)
+
+    def drop_ensure(self):
+        if "確定丟棄" in self.content:
+            self.mem.decode_send(f"xD {self._x_62} {self._y_62} {self.model_62} -1 1")
+            self.close()
 
     def close(self):
         """能够关闭游戏中所有窗口"""

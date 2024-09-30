@@ -1,6 +1,6 @@
-from happy.interface.mem import InterfaceBase
+from happy.interface.mem import LocationBase
 
-class Team(InterfaceBase):
+class Team(LocationBase):
     # short valid;
     # short padding;
     # int unit_id;
@@ -23,3 +23,6 @@ class Team(InterfaceBase):
     def is_leader(self):
         leader = self.mem.read_short(0x00F4C47C)
         return leader == 1
+    
+    def join(self):
+        self.mem.decode_send(f"zn {self._x_62} {self._y_62} 1")

@@ -1,8 +1,10 @@
 import os
 import struct
 import pickle
+import time
 import csv
 import logging
+import hashlib
 from happy.interface.mem import CgMem, InterfaceBase
 from happy.util.path_search import merge_path, a_star_search
 from happy.util import b62, log_execution_time
@@ -77,26 +79,49 @@ _object_dict = _load_object_dict()
 
 class MapFile:
     def __init__(self, path: str) -> None:
-        """_summary_
 
-        Args:
-            path (_type_): _description_
-        """
         self.path: str = path
         self.width_east: int = 0
         self.height_south: int = 0
         self._flag_data: list[list] = []
         self._transports = []
+        self._last_hash = ""
+        self._is_full_downloaded = False
+
+
+    def hash(self):
+        md5 = hashlib.md5()
+        try:
+            with open(self.path, 'rb') as file:
+                data = file.read()
+                md5.update(data)
+            return md5.hexdigest()
+        except FileNotFoundError:
+            logging.warning(f"文件 {self.path} 不存在。")
+            return ""
 
     @property
     def transports(self):
-        self.read()
         return self._transports
+
+    @property
+    def is_full_downloaded(self):
+        return self._is_full_downloaded
+
+    @property
+    def is_dungeon(self):
+        return "map\\1\\" in self.path 
 
     @property
     def _pickle_path(self):
         """example data\\map\\0\\1530.dat"""
         return "data\\map\\" + self.path.split("map\\")[1]
+
+    def dunp_flag_data_to_csv(self):
+        with open(self._pickle_path + ".csv", "w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            for row in self._flag_data:
+                writer.writerow(row)
 
     def dump_flag_data(self):
         if not self._flag_data:
@@ -108,14 +133,9 @@ class MapFile:
 
         with open(self._pickle_path, "wb") as f:
             pickle.dump(self._flag_data, f)
-            logging.info(f"Dump map flag data to {self._pickle_path}")
+            logging.debug(f"Dump map flag data to {self._pickle_path}")
 
-        #导出为excel
-        # with open(self._pickle_path + ".csv", "w", newline="") as csvfile:
-        #     writer = csv.writer(csvfile)
-        #     for row in self._flag_data:
-        #         writer.writerow(row)
-
+        
     def load_flag_data(self):
         try:
             with open(self._pickle_path, "rb") as f:
@@ -130,6 +150,16 @@ class MapFile:
     @log_execution_time(0.1)
     def read(self):
         """self.flag_data[x][y] 1表示有障碍，0表示可通过，读取失败self.flag_data=[]"""
+
+        hash = self.hash()
+        if self._last_hash == hash :
+            logging.debug(f"{self.path} READ MD5一致 使用缓存")
+            return self._flag_data
+        
+        logging.debug(f"READ {self.path}")
+        self._last_hash = hash
+        full_downloaded = True
+
         try:
             with open(self.path, "rb") as file:
                 header = file.read(20)
@@ -167,6 +197,10 @@ class MapFile:
                         if ground in _object_dict or ground == 100:
                             self._flag_data[i][j] = 1
 
+                        
+                        if  flag == 0 :
+                            full_downloaded = False
+
                         # flag == 49162是出口切换地图 49155是水晶传送上下楼梯 49152正常通过 49154遭遇战斗 0为未探索
                         if flag == 49155:
                             self._transports.append((j, i, object_id))
@@ -186,7 +220,10 @@ class MapFile:
                             for l in range(s):
                                 for m in range(e):
                                     self._flag_data[i - l][j + m] = 1
+        
+            self._is_full_downloaded = full_downloaded
 
+    
         except FileNotFoundError:
             logging.warning(f"文件 {self.path} 不存在。")
         except Exception as e:
@@ -196,11 +233,12 @@ class MapFile:
 
     @property
     def flag_data(self):
-        if not self._flag_data:
-            self.load_flag_data()
-        if not self._flag_data:
-            self.read()
-            self.dump_flag_data()
+        if not self.is_dungeon:
+            if not self._flag_data:
+                self.load_flag_data()
+            if not self._flag_data:
+                self.read()
+                self.dump_flag_data()
         return self._flag_data
 
 
@@ -331,9 +369,10 @@ class Map(InterfaceBase):
         super().__init__(mem)
         self.units = MapUnitCollection(mem)
         self._map_files_cache = {}
+        self._last_start = None
         self._last_path = []
-        self._last_grid = []
-        self._last_goal = None
+        self._last_map_id = 0
+        self._last_dest = None
 
     @property
     def location(self):
@@ -341,11 +380,11 @@ class Map(InterfaceBase):
 
     @property
     def x(self):
-        return int(self.mem.read_float(0x00BF6CE8) / 64)
+        return round(self.mem.read_float(0x00BF6CE8) / 64)
 
     @property
     def y(self):
-        return int(self.mem.read_float(0x00BF6CE4) / 64)
+        return round(self.mem.read_float(0x00BF6CE4) / 64)
 
     @property
     def x_62(self):
@@ -387,35 +426,63 @@ class Map(InterfaceBase):
         self._map_files_cache[path] = file
         return file
 
+
+    def find_transports(self):
+        
+        if not self.file.is_full_downloaded:
+            logging.debug("find transports request and read")
+            self.request_download()
+            self.file.read()        
+        return self.file.transports
+
+
     @log_execution_time(0.1)
     def search(self, x: int | tuple, y: int = None) -> list[tuple[int, int]] | None:
+
         if y is None:
             destination = x
         else:
             destination = (x, y)
 
-        grid = self.file.flag_data
         start = self.location
 
         # 使用缓存结果
+        # 参数完全相同，直接使用上次结果
+        if (
+            start == self._last_start
+            and self.id == self._last_map_id
+            and destination == self._last_dest
+        ):
+            path = self._last_path
+            merged_path = merge_path(path, start)
+            return merged_path
+        
+        # 当前起点在上次路径中
         if (
             start in self._last_path
-            and grid == self._last_grid
-            and destination == self._last_goal
+            and self.id == self._last_map_id
+            and destination == self._last_dest
         ):
             index = self._last_path.index(start)
             path = self._last_path[index + 1 :]
             merged_path = merge_path(path, start)
             return merged_path
 
-        path = a_star_search(grid, start, destination)
+        #无数据直接返回空
+        if not self.file.flag_data:
+            return None
+
+        # 重新计算路径
+        logging.debug(f"Search map:{self.id} start:{start} dest:{destination},last:{self._last_map_id},{self._last_start},{self._last_dest}")
+        path = a_star_search(self.file.flag_data, start, destination)
         if path:
-            self._last_goal = destination
-            self._last_grid = grid
+            self._last_start = start
+            self._last_dest = destination
+            self._last_map_id = self.id
             self._last_path = path
             merged_path = merge_path(path, start)
             return merged_path
-
+        logging.info(f"Search, NOT FOUND:{self.id} start:{start} dest:{destination}")
         return None
 
     def request_download(self):
@@ -427,6 +494,8 @@ class Map(InterfaceBase):
                 self.mem.decode_send(
                     f"UUN 1 {b62(self.id)} {b62(i*size)} {b62(j*size)} {b62(i*size+size)} {b62(j*size+size)}"
                 )
+                time.sleep(0.1)
+        time.sleep(1)
 
     def distance_to(self, x: int | tuple, y: int = None):
         if y is None:

@@ -1,7 +1,7 @@
 import time
 import threading
 import logging
-
+import random
 from typing import Literal, Type
 from pymem.exception import MemoryReadError
 
@@ -16,6 +16,7 @@ from .script import Script
 from .team import Team
 
 from happy.util import b62
+from happy.util.captcha import solve_captcha
 
 
 class Cg:
@@ -30,12 +31,14 @@ class Cg:
         self.pets = PetCollection(self.mem)
         self.team = Team(self.mem)
 
+        self._last_map_id = 0
+
         self.__thread = threading.Thread(target=self._main_loop)
         self.stopped_callback = None
 
-    
     def start_scripts_thread(self):
-        self.__thread.start()
+        if not self.__thread.is_alive():
+            self.__thread.start()
 
     @property
     def state(self):
@@ -62,17 +65,20 @@ class Cg:
             try:
                 for script in self._scripts:
                     script.update()
+                time.sleep(0.1)
             except MemoryReadError as e:
-                print(e)
                 break
-
+        account = self.account
         if self.stopped_callback is not None:
             self.stopped_callback(self)
-        logging.warning(self.account, "线程退出")
+        logging.warning(account, "线程结束")
         del self.mem
         del self
 
     def go_to(self, x: int | tuple, y: int = None):
+        if self.state!=9 or self.state2 != 3:
+            return False
+        
         if y is None:
             x, y = x
         if self.map.location == (x, y):
@@ -96,10 +102,16 @@ class Cg:
         self.mem.write_bytes(0x00468476, bytes.fromhex("89 0D C4 C2 C0 00"), 6)
 
     def nav_to(self, x: int | tuple, y: int = None):
+
+        if self.state!=9 or self.state2 != 3:
+            return False
+        
         if y is None:
             dest = x
         else:
             dest = (x, y)
+        
+        
         if self.map.location == dest:
             return True
         path = self.map.search(dest)
@@ -110,13 +122,26 @@ class Cg:
             return False
 
     def nav_dungeon(self):
-        transports = self.map.file.transports
+        if self.state!=9 or self.state2 != 3:
+            return False
+        
+        #更换地图先读取一次
+        if self.map.id != self._last_map_id:
+            self.map.request_download()
+            self.map.file.read()
+            self._last_map_id = self.map.id
+
+        transports = self.map.find_transports()
         if len(transports) > 1:
             transports.sort(key=lambda x: x[2])
-            logging.info(transports)
             if "地下" in self.map.name:
                 transports.reverse()
             x, y, o = transports[0]
+            if self.map.location == (x, y):
+                self.go_to(
+                    self.map.x + random.randint(-1, 1),
+                    self.map.y + random.randint(-1, 1),
+                )
             self.nav_to(x, y)
 
     def click(self, direction: Literal["A", "B", "C", "D", "E", "F", "G", "H"]):
@@ -124,7 +149,11 @@ class Cg:
         Args:
             direction: A-H,顺时针表示左上,上,右上,右,右下,下,左下,左
         """
+        if self.state!=9 or self.state2 != 3:
+            return False
+        
         self.mem.decode_send(f"zA {self.map.x_62} {self.map.y_62} {direction} 0")
+        time.sleep(0.5)
 
     def click_to(self, x: int | tuple, y: int = None):
         """如果距离足够，点击目标位置"""
@@ -162,14 +191,19 @@ class Cg:
         # 如果存在有效的方向，则执行点击操作
         if direction:
             self.click(direction)
+            return True
+
+        return False
 
     def dialogue_to(self, *coordinate):
         """如果没有对话框，click_to(x,y)"""
+        if self.state!=9 or self.state2 != 3:
+            return False
+        
         if self.dialog.is_open:
-            return
+            return False
         # self.dialog.close()
-        self.click_to(coordinate)
-        time.sleep(0.5)
+        return self.click_to(coordinate)
 
     @property
     def battle_speed(self):
@@ -245,11 +279,99 @@ class Cg:
         self.dialog.reply(context, action)
 
     def tp(self):
+        if self.state == 10:
+            self.mem.write_int(0x00F62954, 7)
         self.mem.decode_send("lO")
-        self.mem.write_int(0x00F62954, 7)
-        self.mem.write_int(0x00F62954, 3)
         time.sleep(1)
 
     def hunt_message(self):
         text = self.mem.read_string(0x0019CBE0, 100)
         print(text)
+
+    def solve_if_captch(self):
+        code = self.mem.read_string(0x00C32D4E, 10)
+        if code != "" and code.isdigit() and len(code) == 10:
+            version = self.mem.read_string(0x00C32CAC, 20)
+            isv2 = "v2" in version
+            if isv2:
+                logging.warning("v2 capcha")
+                # success = solve_captcha_v2(self.account, code)
+            else:
+                success = solve_captcha(self.account, code)
+            if success:
+                self.mem.write_string(0x00C32D4E, "\0\0\0\0\0\0\0\0\0\0")
+            else:
+                context = self.mem.read_string(0x00C32D40, 50)
+                logging.critical(
+                    "验证失败,账号:"
+                    + self.account
+                    + ",code:"
+                    + code
+                    + ",context:"
+                    + context
+                )
+
+    def set_auto_login(self, enable=True):
+        # set_auto_ret_blackscreen
+        # 005122DB  黑屏跳出 0F 84 4D FF FF FF 改90 90 90 90 90 90
+        if enable:
+            self.mem.write_bytes(0x005122DB, bytes.fromhex("90 90 90 90 90 90"), 6)
+        else:
+            self.mem.write_bytes(0x005122DB, bytes.fromhex("0F 84 4D FF FF FF"), 6)
+
+        # set_auto_select_charater
+        # call start at 0045A285
+        #                                                              0/1左侧右侧角色
+        # 0045A2A0 原83 F8 06 0F 87 0D 04 00 00 改 B8 01 00 00 00 66 BB 01 00
+
+        if enable:
+            character = self.mem.read_int(0x00F627F8)
+            if character == 0:
+                self.mem.write_bytes(
+                    0x0045A2A0, bytes.fromhex("B8 01 00 00 00 66 BB 00 00"), 9
+                )
+            else:
+                self.mem.write_bytes(
+                    0x0045A2A0, bytes.fromhex("B8 01 00 00 00 66 BB 01 00"), 9
+                )
+        else:
+            self.mem.write_bytes(
+                0x0045A2A0, bytes.fromhex("83 F8 06 0F 87 0D 04 00 00"), 9
+            )
+
+        # set_auto_login
+        # 00458C40 函数开头
+        # 写入几线
+        # 00458E1A  E8 80 F0 FF FF 改 B8 D3 00 00 00 BE 03 00 00 00 90 过跳转
+
+        # 处理重连失败弹窗
+        # 00458CB9 39 35 54 29 F6 00 0F 85 69 02 00 00 改C7 05 54 29 F6 00 01 00 00 00 90 90
+
+        if enable:
+            line = self.mem.read_int(0x00927644)
+            line_str = str(line).zfill(2)
+            self.mem.write_bytes(
+                0x00458E1A,
+                bytes.fromhex(f"B8 D3 00 00 00 BE {line_str} 00 00 00 90"),
+                11,
+            )
+        else:
+            self.mem.write_bytes(
+                0x00458E1A, bytes.fromhex("55 E8 80 F0 FF FF 83 C4 04 A8 40"), 11
+            )
+
+    def retry_if_login_failed(self):
+        # 1没有小窗 3正在连接
+        if self.state == 2 and self.state2 not in (1, 3):
+            logging.warning("%s 正在重连", self.account)
+            # state2 写1
+            self.mem.write_int(0x00F62954, 1)
+            time.sleep(3)
+
+    def set_popup_explorer_disable(self, enable=True):
+        """禁止游戏弹出网页"""
+        pointer = self.mem.read_int(0x0053E220)
+        if enable:
+            self.mem.write_bytes(pointer, bytes.fromhex("C2 04 00"), 3)
+        else:
+            self.mem.write_bytes(pointer, bytes.fromhex("8B FF 55"), 3)

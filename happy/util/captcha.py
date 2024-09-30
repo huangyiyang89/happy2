@@ -1,3 +1,54 @@
+import logging
+import re
+from twocaptcha import TwoCaptcha
+import cloudscraper
+from .key import twokey
+
+def solve_captcha(account, code) -> bool:
+    url = f"https://www.bluecg.net/plugin.php?id=gift:v3&ac={account}&time={code}"
+    scraper = cloudscraper.create_scraper()
+    scraper.headers["Cache-Control"] = "no-cache"
+    print("正在验证：")
+    print(url)
+    # request main_page
+    main_page_text = scraper.get(url).text
+
+    if "連結中沒有輸入正確訊息" in main_page_text:
+        print("連結中沒有輸入正確訊息，已验证过")
+        return True
+
+    matches = re.findall(r'data-sitekey="([^"]+)"', main_page_text)
+    if matches:
+        sitekey = matches[0]
+    else:
+        logging.error("not match data-sitekey,%s", url)
+        return True
+
+    # solve slider
+    res = scraper.post(
+        url="https://www.bluecg.net/handle_slide_verify.php",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        data={"action": "validate_slide"},
+    )
+    
+    solver = TwoCaptcha(twokey)
+    try:
+        result = solver.turnstile(
+            sitekey=sitekey,
+            url=url
+        )
+        # post verify
+        data = {
+        "cf-turnstile-response": result["code"],
+        "submit": "",
+        }
+        res = scraper.post(url, data=data)
+        print(res)
+        return True
+    except Exception as e:
+        print(e)
+
+
 def solve_captcha_v2(account, code) -> bool:
     """_summary_
 
@@ -80,25 +131,3 @@ def solve_captcha_v2(account, code) -> bool:
 
     res = scraper.post(url, data=data)
     return True 
-def solve_if_captch(self):
-        """_summary_"""
-        version = self.mem.read_string(0x00C32CAC, 20)
-        isv2 = "v2" in version
-        code = self.mem.read_string(0x00C32D4E, 10)
-        context = self.mem.read_string(0x00C32D40, 50)
-        if code != "" and code.isdigit() and len(code) == 10:
-            if isv2:
-                success = solve_captcha_v2(self.account, code)
-            else:
-                success = solve_captcha(self.account, code)
-            if success:
-                self.mem.write_string(0x00C32D4E, "\0\0\0\0\0\0\0\0\0\0")
-            else:
-                logging.info(
-                    "验证失败,账号:"
-                    + self.account
-                    + ",code:"
-                    + code
-                    + ",context:"
-                    + context
-                )

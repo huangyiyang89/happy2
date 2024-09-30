@@ -60,35 +60,36 @@ class Pet(InterfaceBase):
 class PetCollection(InterfaceBase):
     def __init__(self, mem: CgMem) -> None:
         super().__init__(mem)
-        self._pets: list[Pet] = []
+
+    def __iter__(self):
         for i in range(5):
-            pet = Pet(mem, i)
+            pet = Pet(self.mem, i)
             if pet.name:
-                self._pets.append(pet)
+                yield pet
 
     @property
     def on_battle(self):
-        for pet in self._pets:
+        for pet in self:
             if pet.state == 2:
                 return pet
         return None
 
     def __getitem__(self, index):
-        for pet in self._pets:
+        for pet in self:
             if pet.index == index:
                 return pet
         return None
 
     @property
     def full_state(self):
-        for pet in self._pets:
+        for pet in self:
             if pet.hp_per < 100 or pet.mp_per < 100:
                 return False
         return True
 
     @property
     def full_health(self):
-        for pet in self._pets:
+        for pet in self:
             if pet.injury > 0:
                 return False
         return True

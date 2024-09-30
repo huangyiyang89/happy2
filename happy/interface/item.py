@@ -1,4 +1,4 @@
-from happy.interface.mem import CgMem, InterfaceBase
+from happy.interface.mem import CgMem, InterfaceBase, LocationBase
 from happy.util import b62
 
 _foods = [
@@ -101,7 +101,7 @@ class Item:
         return 0
 
 
-class ItemCollection(InterfaceBase):
+class ItemCollection(LocationBase):
 
     def __iter__(self):
         for i in range(28):
@@ -114,28 +114,31 @@ class ItemCollection(InterfaceBase):
 
     def use(self, item: str | Item, target: str | int = 0):
 
-        x_62 = b62(int(self.mem.read_float(0x00BF6CE8) / 64))
-        y_62 = b62(int(self.mem.read_float(0x00BF6CE4) / 64))
-
         if isinstance(item, str):
             item_to_use = self.find(item)
         if isinstance(item, Item):
             item_to_use = item
         if item_to_use:
-            self.mem.decode_send(f"Ak {x_62} {y_62} {item_to_use.index_62} {target}")
+            self.mem.decode_send(
+                f"Ak {self._x_62} {self._y_62} {item_to_use.index_62} {target}"
+            )
 
     def drop(self, *args):
-        x_62 = b62(int(self.mem.read_float(0x00BF6CE8) / 64))
-        y_62 = b62(int(self.mem.read_float(0x00BF6CE4) / 64))
         for item in args:
             if isinstance(item, Item):
-                self.mem.decode_send(f"QpfE {x_62} {y_62} 0 {item.index_62}")
+                self.mem.decode_send(
+                    f"QpfE {self._x_62} {self._y_62} 0 {item.index_62}"
+                )
+                return
             if isinstance(item, str):
                 item_to_find = self.find(item)
                 if item_to_find:
                     self.mem.decode_send(
-                        f"QpfE {x_62} {y_62} 0 {item_to_find.index_62}"
+                        f"QpfE {self._x_62} {self._y_62} 0 {item_to_find.index_62}"
                     )
+                return
+
+
 
     @property
     def gold(self):
@@ -165,7 +168,6 @@ class ItemCollection(InterfaceBase):
     def gears(self):
         return (item for item in self if item.index < 8)
 
-
     def find(self, item_name: str = "", quantity=0):
         """模糊匹配包含item_name的第一个物品"""
         for item in self:
@@ -173,31 +175,30 @@ class ItemCollection(InterfaceBase):
                 return item
         return None
 
-    def get(self,index):
+    def get(self, index):
         for item in self:
             if item.index == index:
                 return item
         return None
-    
+
     @property
     def count(self):
         """背包内物品数量，不包括装备"""
         counter = 0
-        for i in range(8,28):
+        for i in range(8, 28):
             valid = self.mem.read_short(0x00F4C494 + 0xC5C * i)
             if valid:
                 counter += 1
         return counter
-        
 
     @property
     def left_hand(self):
         return self.get(3)
-    
+
     @property
     def right_hand(self):
         return self.get(2)
-    
+
     @property
     def has_weapon(self):
         return self.left_hand or self.right_hand

@@ -68,6 +68,11 @@ class Player(InterfaceBase):
         """encoding="big5hkscs"""
         return self.mem.read_string(0x00F4C3F8, encoding="big5hkscs")
 
+
+    @property
+    def customize_title(self):
+        return self.mem.read_string(0x00F4C409)
+
     @property
     def remain_points(self):
         """剩余点数"""

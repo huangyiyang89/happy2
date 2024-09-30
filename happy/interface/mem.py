@@ -2,7 +2,7 @@ import time
 import logging
 import pymem
 import pymem.process
-
+from happy.util import b62
 
 def find_all_cg_process_id(process_name=b"bluecg.exe"):
     """find all processes
@@ -16,13 +16,7 @@ def find_all_cg_process_id(process_name=b"bluecg.exe"):
         if process.szExeFile == process_name:
             yield process.th32ProcessID
 
-
 class CgMem(pymem.Pymem):
-    """_summary_
-
-    Args:
-        pymem (_type_): _description_
-    """
 
     def read_string(self, address, byte=50, encoding="big5", end=b"\x00"):
         """_summary_
@@ -90,10 +84,26 @@ class CgMem(pymem.Pymem):
         self.write_int(0x0072BD15, 26)
         # 延迟防止不触发
         time.sleep(0.1)
-
-        logging.info("decode_send: "+content)
-
+        account = self.read_string(0x00D15644)
+        logging.debug(f"{account}, decode_send: "+content)
 
 class InterfaceBase:
     def __init__(self, mem: CgMem):
         self.mem = mem
+
+class LocationBase(InterfaceBase):
+    @property
+    def _x(self):
+        return int(self.mem.read_float(0x00BF6CE8) / 64)
+
+    @property
+    def _y(self):
+        return int(self.mem.read_float(0x00BF6CE4) / 64)
+
+    @property
+    def _x_62(self):
+        return b62(self._x)
+
+    @property
+    def _y_62(self):
+        return b62(self._y)

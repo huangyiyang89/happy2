@@ -1,5 +1,6 @@
 import happy
 import logging
+import asyncio
 from nicegui import ui
 
 import happy
@@ -8,7 +9,7 @@ import happy.scripts
 
 logging.basicConfig(
     # filename="unhappy.log",
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
@@ -27,7 +28,9 @@ def update_ui_container():
             cg.load_script(happy.scripts.LevelUp)
             cg.load_script(happy.scripts.AutoMaze)
             cg.load_script(happy.scripts.farm.LiDong)
-            # cg.load_script(Szdjz, False)
+            cg.load_script(happy.scripts.mission.Szdjz)
+            cg.load_script(happy.scripts.util.Logger)
+
             with ui.card():
                 ui.label("Player Name").text = cg.player.name
                 ui.label("Account").text = cg.account
@@ -46,5 +49,6 @@ with ui.row():
     refresh_button = ui.button("刷新", on_click=update_ui_container)
 
 ui_container = ui.row()
-ui.timer(1, update_ui_container, once=True)
-ui.run(native=True, window_size=(760, 1000))
+
+ui.timer(0, update_ui_container, once=True)
+ui.run(native=True, window_size=(760, 1000), reload=False)

@@ -2,15 +2,14 @@ import os
 import logging
 import happy
 import time
+import hashlib
 from happy.util import b62
+
 logging.basicConfig(
     # filename="unhappy.log",
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
-
-cg = happy.open("mlbbdd01")
-
 
 def clear_screen():
     """清屏函数"""
@@ -21,13 +20,25 @@ def clear_screen():
     else:
         os.system("clear")
 
-while True:
-    for unit in list(cg.battle.units.friends):
-        print(unit.name,unit.position,unit.unknown3,unit.unknown9,unit.unknown10,unit.unknown11)
-    time.sleep(1)
-    clear_screen()
 
-#cg.mem.decode_send(f"UUN 1 {b62(cg.map.id)} {b62(25)} {b62(15)} {b62(50)} {b62(40)}")
+def md5_file(file_path):
+    start_time = time.time()
+    md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        while True:
+            data = f.read(8192)
+            if not data:
+                break
+            md5.update(data)
+    end_time = time.time()
+    print(f"函数运行时间: {end_time - start_time} 秒")
+    return md5.hexdigest()
+
+
+file_path = r"C:\\Users\\HY\Desktop\\happy2\data\\map\\1\\1\\2597.dat"
+print(md5_file(file_path))
+
+# cg.mem.decode_send(f"UUN 1 {b62(cg.map.id)} {b62(25)} {b62(15)} {b62(50)} {b62(40)}")
 # injury 4096 店铺
 
 # 玩家 type == 8 and flag = 256

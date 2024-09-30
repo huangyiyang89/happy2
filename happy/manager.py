@@ -32,7 +32,7 @@ def _open_cg(process_id):
         cg = Cg(mem)
         _crossgates.append(cg)
         cg.stopped_callback = lambda cg: _crossgates.remove(cg)
-        logging.info(f"new cg instantce created, account: {cg.account} player name: {cg.player.name}")
+        logging.debug(f"new cg instantce created, account: {cg.account} player name: {cg.player.name}")
         return cg
     except Exception("open process failed"):
         return None
