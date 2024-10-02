@@ -87,9 +87,10 @@ class LiDong(Script):
             #队员模式
             if team_config == 0 and self.cg.team.count == 0:
                 self._go_to_W1()
-                self.cg.click("G")
-                self.cg.team.join()
-                time.sleep(3)
+                if self.cg.map.location == (68,100):
+                    self.cg.click("G")
+                    self.cg.team.join()
+                    time.sleep(1)
                 return
             elif team_config == 0 and self.cg.team.count > 0:
                 return

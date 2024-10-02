@@ -12,6 +12,7 @@ class Script:
         self.enable = False
         self._start_has_run = False
         self._stop_has_run = False
+        self._last_map_id = 0
         self._last_time = time.time()
         self._on_init()
 
@@ -40,6 +41,10 @@ class Script:
 
         if self.cg.state == 9 and self.cg.state2 == 3:
             self._on_not_battle()
+            if self.cg.map.id != self._last_map_id:
+                self._on_map_changed()
+                self._last_map_id = self.cg.map.id
+
             if self.cg.dialog.is_open:
                 self._on_dialog()
             if self.cg.is_moving:
@@ -73,6 +78,9 @@ class Script:
         pass
 
     def _on_not_moving(self):
+        pass
+
+    def _on_map_changed(self):
         pass
 
     def _on_dialog(self):

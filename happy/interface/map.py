@@ -147,7 +147,7 @@ class MapFile:
         except Exception as e:
             print(f"发生未知错误：{e}")
 
-    @log_execution_time(0.1)
+    
     def read(self):
         """self.flag_data[x][y] 1表示有障碍，0表示可通过，读取失败self.flag_data=[]"""
 
@@ -299,6 +299,17 @@ class MapUnitCollection(InterfaceBase):
                 return unit
         return None
 
+    def find_location(self,x: int | tuple, y: int = None):
+        if y is None:
+            target = x
+        else:
+            target = (x, y)
+        for unit in self:
+            if unit.location == target:
+                return unit
+        return None
+
+
     def find_item(self, *names):
         for name in names:
             unit = self.find(name=name, type=2, flag=1024)
@@ -427,16 +438,16 @@ class Map(InterfaceBase):
         return file
 
 
-    def find_transports(self):
+    def find_transports(self, count = 2):
         
-        if not self.file.is_full_downloaded:
-            logging.debug("find transports request and read")
+        if not self.file.is_full_downloaded or len(self.file.transports)<count:
+            logging.debug("find transports, request and read")
             self.request_download()
             self.file.read()        
         return self.file.transports
 
 
-    @log_execution_time(0.1)
+  
     def search(self, x: int | tuple, y: int = None) -> list[tuple[int, int]] | None:
 
         if y is None:

@@ -43,10 +43,11 @@ def solve_captcha(account, code) -> bool:
         "submit": "",
         }
         res = scraper.post(url, data=data)
-        print(res)
+        logging.info(url+res.text)
         return True
     except Exception as e:
-        print(e)
+        logging.error(e)
+        return False
 
 
 def solve_captcha_v2(account, code) -> bool:
