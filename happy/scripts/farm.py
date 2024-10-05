@@ -40,7 +40,11 @@ class LiDong(Script):
             if self.cg.items.count > 10:
                 self._go_to_sell()
                 return
-            if self.cg.player.hp_per != 100 or self.cg.player.mp_per != 100 or not self.cg.pets.full_state:
+            if (
+                self.cg.player.hp_per != 100
+                or self.cg.player.mp_per != 100
+                or not self.cg.pets.full_state
+            ):
                 self._go_to_heal()
                 return
 
@@ -84,21 +88,21 @@ class LiDong(Script):
         ):
             team_config = int(self.cg.player.customize_title)
 
-            #队员模式
+            # 队员模式
             if team_config == 0 and self.cg.team.count == 0:
                 self._go_to_W1()
-                if self.cg.map.location == (68,100):
+                if self.cg.map.location == (68, 100):
                     self.cg.click("G")
                     self.cg.team.join()
                     time.sleep(1)
                 return
             elif team_config == 0 and self.cg.team.count > 0:
                 return
-            
-            #队长模式
+
+            # 队长模式
             if self.cg.team.count < team_config:
                 self._go_to_W1()
-                if self.cg.map.location == (68,100):
+                if self.cg.map.location == (68, 100):
                     self.cg.go_to(67, 100)
                 return
             else:
@@ -181,6 +185,10 @@ class LiDong(Script):
                 self.cg.map.x + random.randint(-10, 10),
                 self.cg.map.y + random.randint(-10, 10),
             )
+            return
+        
+        if "里歐波多洞窟地下14層" in self.cg.map.name:
+            self.cg.nav_dungeon(back=True)
             return
 
         if "里歐波多洞窟地下" in self.cg.map.name:
@@ -296,16 +304,17 @@ class LevelUp(Script):
 
     def _on_not_battle(self):
         if self.cg.player.remain_points > 0:
-            if self.cg.player.endurance_points < 0:
-                self.cg.player.add_point(0)
+            lvl = self.cg.player.level
             if self.cg.player.strength_points < 125:
                 self.cg.player.add_point(1)
                 self.cg.player.add_point(1)
-            if self.cg.player.agility_points < 60:
+            if self.cg.player.endurance_points < lvl:
+                self.cg.player.add_point(0)
+            if self.cg.player.agility_points < lvl:
                 self.cg.player.add_point(3)
-            if self.cg.player.defense_points < 50:
+            if self.cg.player.defense_points < 0:
                 self.cg.player.add_point(2)
-            if self.cg.player.level > 40 and self.cg.player.magical_points < 30:
+            if self.cg.player.level > 40 and self.cg.player.magical_points < 0:
                 self.cg.player.add_point(4)
         if self.cg.pets.on_battle and self.cg.pets.on_battle.remain_points > 0:
             pet = self.cg.pets.on_battle

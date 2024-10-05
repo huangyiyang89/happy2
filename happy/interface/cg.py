@@ -119,9 +119,12 @@ class Cg:
             self.go_to(path[0])
             return True
         else:
+            logging.info("Nav failed, request and read")
+            self.map.request_download()
+            self.map.file.read()
             return False
 
-    def nav_dungeon(self):
+    def nav_dungeon(self,back=False):
         if self.state!=9 or self.state2 != 3:
             return False
         
@@ -135,6 +138,8 @@ class Cg:
         if len(transports) > 1:
             transports.sort(key=lambda x: x[2])
             if "地下" in self.map.name:
+                transports.reverse()
+            if back:
                 transports.reverse()
             x, y, o = transports[0]
             if self.map.location == (x, y):

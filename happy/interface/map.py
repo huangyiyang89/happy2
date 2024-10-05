@@ -110,7 +110,7 @@ class MapFile:
 
     @property
     def is_dungeon(self):
-        return "map\\1\\" in self.path 
+        return "map\\0\\" not in self.path 
 
     @property
     def _pickle_path(self):
@@ -381,8 +381,9 @@ class Map(InterfaceBase):
         self.units = MapUnitCollection(mem)
         self._map_files_cache = {}
         self._last_start = None
-        self._last_path = []
+        self._last_searched_path = []
         self._last_map_id = 0
+        self._last_file:MapFile = None
         self._last_dest = None
 
     @property
@@ -430,12 +431,19 @@ class Map(InterfaceBase):
     @property
     def file(self) -> MapFile:
         path = self._path
-        if path in self._map_files_cache:
-            return self._map_files_cache[path]
 
-        file = MapFile(path)
-        self._map_files_cache[path] = file
-        return file
+        if self._last_file and path == self._last_file.path:
+            return self._last_file
+        else:
+            if path in self._map_files_cache:
+                self._last_file = self._map_files_cache[path]
+                return self._map_files_cache[path]
+            else:
+                file = MapFile(path)
+                self._last_file = file
+                if not file.is_dungeon:
+                    self._map_files_cache[path] = file
+                return file
 
 
     def find_transports(self, count = 2):
@@ -464,18 +472,18 @@ class Map(InterfaceBase):
             and self.id == self._last_map_id
             and destination == self._last_dest
         ):
-            path = self._last_path
+            path = self._last_searched_path
             merged_path = merge_path(path, start)
             return merged_path
         
         # 当前起点在上次路径中
         if (
-            start in self._last_path
+            start in self._last_searched_path
             and self.id == self._last_map_id
             and destination == self._last_dest
         ):
-            index = self._last_path.index(start)
-            path = self._last_path[index + 1 :]
+            index = self._last_searched_path.index(start)
+            path = self._last_searched_path[index + 1 :]
             merged_path = merge_path(path, start)
             return merged_path
 
@@ -490,7 +498,7 @@ class Map(InterfaceBase):
             self._last_start = start
             self._last_dest = destination
             self._last_map_id = self.id
-            self._last_path = path
+            self._last_searched_path = path
             merged_path = merge_path(path, start)
             return merged_path
         logging.info(f"Search, NOT FOUND:{self.id} start:{start} dest:{destination}")
