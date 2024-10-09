@@ -16,9 +16,9 @@ class Logger(Script):
         dialog_content = self.cg.dialog.content
 
         if data and data != self.last_data:
-            logging.debug(data.replace("\n", ""))
+            logging.info(data.replace("\n", ""))
             self.last_data = data
 
         if dialog_content and dialog_content != self.last_content:
-            logging.debug(dialog_content.replace("\n", ""))
+            logging.info(dialog_content.replace("\n", ""))
             self.last_content = dialog_content

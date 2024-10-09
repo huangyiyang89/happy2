@@ -7,16 +7,7 @@ class AutoMaze(Script):
         self.name = "迷宫寻路"
 
     def _on_not_battle(self):
-        transports = self.cg.map.file.transports
-        if len(transports) > 1:
-            transports.sort(key=lambda x: x[2])
-            logging.info(transports)
-            if "地下" in self.cg.map.name:
-                transports.reverse()
-            x, y, o = transports[0]
-            self.cg.nav_to(x, y)
-        else:
-            self.cg.map.request_download()
+        self.cg.nav_dungeon()
 
 
 class FaLanLogin(Script):

@@ -120,10 +120,10 @@ class LiDong(Script):
             == self._move_record[1][1:]
             == self._move_record[2][1:]
         ):
-            self.cg.tp()
             logging.warning(
                 f"{self.cg.account} {self.cg.player.name} 角色疑似卡死,{self.cg.map.name} {self.cg.map.x},{self.cg.map.y} TP."
             )
+            self.cg.tp()
             self._move_record = [(0, 0, 0), (1, 1, 1), (2, 2, 2)]
 
     def _print_efficient_record(self):
@@ -181,12 +181,17 @@ class LiDong(Script):
             return
 
         if "里歐波多洞窟地下13層" in self.cg.map.name:
-            self.cg.go_to(
-                self.cg.map.x + random.randint(-10, 10),
-                self.cg.map.y + random.randint(-10, 10),
-            )
+            transport_positions = {(x, y) for x, y, _ in self.cg.map.find_transports()}
+            for _ in range(30):
+                dest = (
+                    self.cg.map.x + random.randint(-1, 1),
+                    self.cg.map.y + random.randint(-1, 1),
+                )
+                if dest not in transport_positions and self.cg.map.file.check(dest) and dest != self.cg.map.location:
+                    break
+            self.cg.go_to(dest)
             return
-        
+
         if "里歐波多洞窟地下14層" in self.cg.map.name:
             self.cg.nav_dungeon(back=True)
             return
@@ -320,7 +325,7 @@ class LevelUp(Script):
             pet = self.cg.pets.on_battle
             if pet.name in ["改造樹精"]:
                 pet.add_point(0)
-            if pet.name in ["小蝙蝠", "使魔", "影蝙蝠"]:
+            if pet.name in ["小蝙蝠", "使魔", "影蝙蝠","異化強盾"]:
                 pet.add_point(1)
 
         if self.cg.player.job_name == "見習弓箭手" and self.cg.map.name == "弓箭手公會":

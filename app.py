@@ -51,4 +51,4 @@ with ui.row():
 ui_container = ui.row()
 
 ui.timer(0, update_ui_container, once=True)
-ui.run(native=True, window_size=(760, 1000), reload=False)
+ui.run(native=True, window_size=(900, 1000), reload=False)

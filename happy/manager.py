@@ -7,10 +7,17 @@ _crossgates: list[Cg] = []
 
 
 def open_all():
+    for cg in _crossgates:
+        if cg.stopped:
+            _crossgates.remove(cg)
+    
     for process_id in find_all_cg_process_id():
         cg = _open_cg(process_id)
         cg.start_scripts_thread()
     _crossgates.sort(key=lambda cg: cg.account)
+
+
+
     return _crossgates
 
 
@@ -31,8 +38,6 @@ def _open_cg(process_id):
         mem = CgMem(process_id)
         cg = Cg(mem)
         _crossgates.append(cg)
-        cg.stopped_callback = lambda cg: _crossgates.remove(cg)
-        logging.debug(f"new cg instantce created, account: {cg.account} player name: {cg.player.name}")
         return cg
     except Exception("open process failed"):
         return None

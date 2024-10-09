@@ -24,18 +24,17 @@ def solve_captcha(account, code) -> bool:
         logging.error("not match data-sitekey,%s", url)
         return True
 
-    # solve slider
-    res = scraper.post(
-        url="https://www.bluecg.net/handle_slide_verify.php",
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        data={"action": "validate_slide"},
-    )
-    
     solver = TwoCaptcha(twokey)
     try:
         result = solver.turnstile(
             sitekey=sitekey,
             url=url
+        )
+        # solve slider
+        slide_res = scraper.post(
+            url="https://www.bluecg.net/handle_slide_verify.php",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={"action": "validate_slide"},
         )
         # post verify
         data = {
@@ -43,10 +42,12 @@ def solve_captcha(account, code) -> bool:
         "submit": "",
         }
         res = scraper.post(url, data=data)
+       
         logging.info("验证成功："+url)
         return True
     except Exception as e:
         logging.error(e)
+        logging.error("wait for 5 seconds")
         return False
 
 

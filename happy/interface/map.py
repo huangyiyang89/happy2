@@ -87,21 +87,31 @@ class MapFile:
         self._transports = []
         self._last_hash = ""
         self._is_full_downloaded = False
-
+        self._last_read_time = 0
 
     def hash(self):
+        """读取整个文件md5值"""
         md5 = hashlib.md5()
         try:
-            with open(self.path, 'rb') as file:
+            with open(self.path, "rb") as file:
                 data = file.read()
                 md5.update(data)
             return md5.hexdigest()
         except FileNotFoundError:
-            logging.warning(f"文件 {self.path} 不存在。")
-            return ""
+            logging.critical(f"hash() 文件 {self.path} 不存在。")
+
+    @property
+    def read_after(self):
+        """上次成功读取后到现在的秒数"""
+        return time.time() - self._last_read_time
 
     @property
     def transports(self):
+        """
+        读取之前使用read() 方法 \n
+        包含出入口水晶和上下楼梯
+        如果地图未完全读取，可能还需要请求地图数据
+        """
         return self._transports
 
     @property
@@ -110,23 +120,23 @@ class MapFile:
 
     @property
     def is_dungeon(self):
-        return "map\\0\\" not in self.path 
+        return "map\\0\\" not in self.path
 
     @property
     def _pickle_path(self):
         """example data\\map\\0\\1530.dat"""
         return "data\\map\\" + self.path.split("map\\")[1]
 
-    def dunp_flag_data_to_csv(self):
+    def dump_flag_data_to_csv(self):
         with open(self._pickle_path + ".csv", "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             for row in self._flag_data:
                 writer.writerow(row)
 
-    def dump_flag_data(self):
+    def pickle_dump_flag_data(self):
         if not self._flag_data:
             return
-        
+
         directory = os.path.dirname(self._pickle_path)
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -135,8 +145,7 @@ class MapFile:
             pickle.dump(self._flag_data, f)
             logging.debug(f"Dump map flag data to {self._pickle_path}")
 
-        
-    def load_flag_data(self):
+    def pickle_load_flag_data(self):
         try:
             with open(self._pickle_path, "rb") as f:
                 self._flag_data = pickle.load(f)
@@ -147,19 +156,19 @@ class MapFile:
         except Exception as e:
             print(f"发生未知错误：{e}")
 
-    
     def read(self):
-        """self.flag_data[x][y] 1表示有障碍，0表示可通过，读取失败self.flag_data=[]"""
+        """
+        读取整个文件对比md5，如果与上次读取一致则忽略 \n
+        """
 
         hash = self.hash()
-        if self._last_hash == hash :
+        if self._last_hash == hash:
             logging.debug(f"{self.path} READ MD5一致 使用缓存")
-            return self._flag_data
-        
-        logging.debug(f"READ {self.path}")
-        self._last_hash = hash
-        full_downloaded = True
+            return True
 
+        logging.debug(f"READ {self.path}")
+
+        full_downloaded_temp = True
         try:
             with open(self.path, "rb") as file:
                 header = file.read(20)
@@ -197,11 +206,10 @@ class MapFile:
                         if ground in _object_dict or ground == 100:
                             self._flag_data[i][j] = 1
 
-                        
-                        if  flag == 0 :
-                            full_downloaded = False
+                        if flag == 0:
+                            full_downloaded_temp = False
 
-                        # flag == 49162是出口切换地图 49155是水晶传送上下楼梯 49152正常通过 49154遭遇战斗 0为未探索
+                        # flag == 49162是出口切换地图 49155是水晶传送和上下楼梯 49152正常通过 49154遭遇战斗 0为未探索
                         if flag == 49155:
                             self._transports.append((j, i, object_id))
 
@@ -220,26 +228,34 @@ class MapFile:
                             for l in range(s):
                                 for m in range(e):
                                     self._flag_data[i - l][j + m] = 1
-        
-            self._is_full_downloaded = full_downloaded
 
-    
+            self._is_full_downloaded = full_downloaded_temp
+            self._last_hash = hash
+            self._last_read_time = time.time()
+
+            logging.debug(f"地图 {self.path} 读取成功。")
         except FileNotFoundError:
-            logging.warning(f"文件 {self.path} 不存在。")
+            logging.critical(f"文件 {self.path} 不存在。")
         except Exception as e:
             logging.error(f"文件 {e} 读取失败。")
-        finally:
-            return self._flag_data
 
     @property
     def flag_data(self):
-        if not self.is_dungeon:
-            if not self._flag_data:
-                self.load_flag_data()
-            if not self._flag_data:
-                self.read()
-                self.dump_flag_data()
+        """
+        读取之前使用read() 方法 \n
+        self.flag_data[南][东] 0表示可通过 1表示有障碍"""
         return self._flag_data
+
+    def check(self, x: int | tuple, y: int = None):
+        if y is None:
+            if isinstance(x, tuple) and len(x) == 2:
+                x, y = x
+            else:
+                raise ValueError("Expected a tuple with two elements for coordinates.")
+        try:
+            return self.flag_data[y][x] == 0
+        except IndexError:
+            return False
 
 
 class MapUnit:
@@ -299,7 +315,7 @@ class MapUnitCollection(InterfaceBase):
                 return unit
         return None
 
-    def find_location(self,x: int | tuple, y: int = None):
+    def find_location(self, x: int | tuple, y: int = None):
         if y is None:
             target = x
         else:
@@ -308,7 +324,6 @@ class MapUnitCollection(InterfaceBase):
             if unit.location == target:
                 return unit
         return None
-
 
     def find_item(self, *names):
         for name in names:
@@ -383,8 +398,9 @@ class Map(InterfaceBase):
         self._last_start = None
         self._last_searched_path = []
         self._last_map_id = 0
-        self._last_file:MapFile = None
+        self._last_file: MapFile = None
         self._last_dest = None
+        self._last_request_time = 0
 
     @property
     def location(self):
@@ -437,7 +453,7 @@ class Map(InterfaceBase):
         else:
             if path in self._map_files_cache:
                 self._last_file = self._map_files_cache[path]
-                return self._map_files_cache[path]
+                return self._last_file
             else:
                 file = MapFile(path)
                 self._last_file = file
@@ -445,19 +461,18 @@ class Map(InterfaceBase):
                     self._map_files_cache[path] = file
                 return file
 
-
-    def find_transports(self, count = 2):
-        
-        if not self.file.is_full_downloaded or len(self.file.transports)<count:
+    def find_transports(self, count=2):
+        """如果找到的出入口小于count，会请求和读取地图数据"""
+        if not self.file.is_full_downloaded or len(self.file.transports) < count:
             logging.debug("find transports, request and read")
             self.request_download()
-            self.file.read()        
+            self.file.read()
         return self.file.transports
 
-
-  
     def search(self, x: int | tuple, y: int = None) -> list[tuple[int, int]] | None:
-
+        """
+        未找到路径会自动调用self.request_download() 和 self.file.read()
+        """
         if y is None:
             destination = x
         else:
@@ -475,7 +490,7 @@ class Map(InterfaceBase):
             path = self._last_searched_path
             merged_path = merge_path(path, start)
             return merged_path
-        
+
         # 当前起点在上次路径中
         if (
             start in self._last_searched_path
@@ -487,12 +502,10 @@ class Map(InterfaceBase):
             merged_path = merge_path(path, start)
             return merged_path
 
-        #无数据直接返回空
-        if not self.file.flag_data:
-            return None
-
         # 重新计算路径
-        logging.debug(f"Search map:{self.id} start:{start} dest:{destination},last:{self._last_map_id},{self._last_start},{self._last_dest}")
+        logging.debug(
+            f"Search map:{self.id} start:{start} dest:{destination},last:{self._last_map_id},{self._last_start},{self._last_dest}"
+        )
         path = a_star_search(self.file.flag_data, start, destination)
         if path:
             self._last_start = start
@@ -501,10 +514,20 @@ class Map(InterfaceBase):
             self._last_searched_path = path
             merged_path = merge_path(path, start)
             return merged_path
-        logging.info(f"Search, NOT FOUND:{self.id} start:{start} dest:{destination}")
-        return None
+        logging.debug("Search not found path! request_download and read")
+        self.request_download()
+        self.file.read()
+        return []
 
     def request_download(self):
+        """
+        向服务器发送地图数据请求，地图后续更新需要一定时间 \n
+        5秒之内最多执行一次，仅在迷宫中使用
+        """
+        if not self.file.is_dungeon:
+            return
+        if time.time() - self._last_request_time < 5:
+            return
         size = 45
         e_start = self.file.width_east // size
         s_start = self.file.height_south // size
@@ -514,7 +537,7 @@ class Map(InterfaceBase):
                     f"UUN 1 {b62(self.id)} {b62(i*size)} {b62(j*size)} {b62(i*size+size)} {b62(j*size+size)}"
                 )
                 time.sleep(0.1)
-        time.sleep(1)
+        self._last_request_time = time.time()
 
     def distance_to(self, x: int | tuple, y: int = None):
         if y is None:

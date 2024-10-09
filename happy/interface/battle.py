@@ -81,13 +81,11 @@ class Unit:
 
     @property
     def is_uncontrolled(self):
-        try:
-            flag = self._data_list[9][5]
-            if flag == "2" or flag == "4":
-                return True
-        except (IndexError, TypeError):
-            logging.warning(f"is_uncontrolled IndexError _data_list = {self._data_list}")
+        data = self._data_list[9]
+        if len(data) > 5 and data[5] in {"2", "4"}:
+            return True
         return False
+
 
     @property
     def unknown3(self):

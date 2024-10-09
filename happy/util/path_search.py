@@ -18,6 +18,9 @@ class Node:
         return self.total_cost < other.total_cost
 
 def a_star_search(grid, start, goal):
+    if not grid:
+        return None
+
     start_node = Node(start[0], start[1], 0, heuristic_euclid(start, goal))
     goal_node = Node(goal[0], goal[1], 0, 0)
 

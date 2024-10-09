@@ -32,13 +32,12 @@ class Cg:
         self.team = Team(self.mem)
 
         self._last_map_id = 0
-
-        self.__thread = threading.Thread(target=self._main_loop)
+        self._thread = threading.Thread(target=self._main_loop)
         self.stopped_callback = None
 
     def start_scripts_thread(self):
-        if not self.__thread.is_alive():
-            self.__thread.start()
+        if not self._thread.is_alive():
+            self._thread.start()
 
     @property
     def state(self):
@@ -60,20 +59,26 @@ class Cg:
     def is_moving(self) -> bool:
         return self.mem.read_int(0x0054DCB0) != 65535
 
+
+    @property
+    def stopped(self):
+        if not hasattr(self,"mem"):
+            return True
+        return False
+
     def _main_loop(self):
         while True:
             try:
                 for script in self._scripts:
                     script.update()
                 time.sleep(0.1)
-            except MemoryReadError as e:
+            except Exception as e:
+                logging.warning(e)
                 break
-        account = self.account
         if self.stopped_callback is not None:
             self.stopped_callback(self)
-        logging.warning(account, "线程结束")
+        logging.warning("线程结束============================================")
         del self.mem
-        del self
 
     def go_to(self, x: int | tuple, y: int = None):
         if self.state!=9 or self.state2 != 3:
@@ -111,28 +116,20 @@ class Cg:
         else:
             dest = (x, y)
         
-        
+        #已到达目的地返回True
         if self.map.location == dest:
             return True
+        
         path = self.map.search(dest)
         if path:
             self.go_to(path[0])
             return True
-        else:
-            logging.info("Nav failed, request and read")
-            self.map.request_download()
-            self.map.file.read()
-            return False
+        
+        return False
 
     def nav_dungeon(self,back=False):
         if self.state!=9 or self.state2 != 3:
             return False
-        
-        #更换地图先读取一次
-        if self.map.id != self._last_map_id:
-            self.map.request_download()
-            self.map.file.read()
-            self._last_map_id = self.map.id
 
         transports = self.map.find_transports()
         if len(transports) > 1:

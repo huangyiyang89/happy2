@@ -1,6 +1,8 @@
 from happy.interface import Script
 import time
 import logging
+
+
 class Assistant(Script):
     """自动补给，自动卖东西"""
 
@@ -13,6 +15,8 @@ class Assistant(Script):
             "平民武器販售處",
             "旅行商人貝萊奇",
         ]
+
+        self._eat_food_flag = 0
 
     def _auto_cure(self):
         if self.cg.dialog.is_doctor:
@@ -54,14 +58,37 @@ class Assistant(Script):
                 count = 1 if "紙人娃娃" in item.name else count
                 items_str += str(item.index) + r"\\z" + str(count) + r"\\z"
         if items_str != "":
-            self.cg.request("0 "+items_str[:-3], "5o")
+            self.cg.request("0 " + items_str[:-3], "5o")
             time.sleep(0.5)
+
+    def _auto_food(self):
+
+        if self.cg.battle.is_battling:
+            self._eat_food_flag = 0
+            return
+
+        if self._eat_food_flag == 0 and self.cg.map.name not in ["亞諾曼城", "法蘭城"]:
+            food = self.cg.items.first_food
+            if food and food.food_restore <= self.cg.player.mp_lost + 50:
+                self.cg.items.use(food)
+                time.sleep(0.5)
+                self.cg.mem.decode_send("mjCv 0")
+                time.sleep(0.5)
+                self.cg.mem.decode_send(
+                    f"iVfo {self.cg.map.x_62} {self.cg.map.y_62} {food.index_62} 0"
+                )
+                self._eat_food_flag = 1
 
     def _on_dialog(self):
         self._auto_heal()
         self._auto_sell()
         self._auto_cure()
 
+    def _on_battle(self):
+        self._eat_food_flag = 0
+
+    def _on_not_battle(self):
+        self._auto_food()
 
 class SpeedBattle(Script):
 
@@ -73,11 +100,10 @@ class SpeedBattle(Script):
     def _on_not_battle(self):
         self.cg.battle_speed = 0
 
-
     def _on_update(self):
         if self.cg.state in (9, 10) and self.cg.state2 in (5, 1, 2, 4, 6, 11):
             player = self.cg.battle.player
-            if player and (player.is_uncontrolled or player.hp==0):
+            if player and (player.is_uncontrolled or player.hp == 0):
 
                 logging.debug("玩家受控或死亡，停止高速战斗！")
                 logging.debug(player._data_list)
@@ -101,6 +127,3 @@ class SpeedMove(Script):
 
     def _on_stop(self):
         self.cg.move_speed = 100
-
-
-

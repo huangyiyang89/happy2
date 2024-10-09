@@ -35,9 +35,7 @@ def md5_file(file_path):
     return md5.hexdigest()
 
 
-file_path = r"C:\\Users\\HY\Desktop\\happy2\data\\map\\1\\1\\2597.dat"
-print(md5_file(file_path))
-
+happy.open("")
 # cg.mem.decode_send(f"UUN 1 {b62(cg.map.id)} {b62(25)} {b62(15)} {b62(50)} {b62(40)}")
 # injury 4096 店铺
 
