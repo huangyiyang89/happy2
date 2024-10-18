@@ -4,7 +4,10 @@ import asyncio
 from nicegui import ui
 
 import happy
+import pkgutil
+import happy.interface
 import happy.scripts
+import happy.scripts.autoload
 
 
 logging.basicConfig(
@@ -27,10 +30,17 @@ def update_ui_container():
             cg.load_script(happy.scripts.AutoEncounter)
             cg.load_script(happy.scripts.LevelUp)
             cg.load_script(happy.scripts.AutoMaze)
-            cg.load_script(happy.scripts.farm.LiDong)
             cg.load_script(happy.scripts.mission.Szdjz)
             cg.load_script(happy.scripts.util.Logger)
+            cg.load_script(happy.scripts.util.Neixin)
 
+            for _, module_name, _ in pkgutil.iter_modules(happy.scripts.autoload.__path__):
+                module = __import__(f"happy.scripts.autoload.{module_name}", fromlist=["*"])
+                for attr_name in dir(module):
+                    attr = getattr(module, attr_name)
+                    if isinstance(attr, type) and issubclass(attr, happy.interface.Script) and attr is not happy.interface.Script:
+                        cg.load_script(attr)
+            
             with ui.card():
                 ui.label("Player Name").text = cg.player.name
                 ui.label("Account").text = cg.account

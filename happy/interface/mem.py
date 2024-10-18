@@ -83,7 +83,7 @@ class CgMem(pymem.Pymem):
         # 回车
         self.write_int(0x0072BD15, 26)
         # 延迟防止不触发
-        time.sleep(0.1)
+        time.sleep(0.2)
         account = self.read_string(0x00D15644)
         logging.debug(f"{account}, decode_send: "+content)
 

@@ -39,7 +39,7 @@ class Assistant(Script):
             self.cg.request("4", model + 3)
         if not self.cg.pets.full_state:
             self.cg.request("4", model + 4)
-        time.sleep(0.5)
+        time.sleep(1)
 
     def _auto_sell(self):
 
@@ -59,7 +59,7 @@ class Assistant(Script):
                 items_str += str(item.index) + r"\\z" + str(count) + r"\\z"
         if items_str != "":
             self.cg.request("0 " + items_str[:-3], "5o")
-            time.sleep(0.5)
+            time.sleep(1)
 
     def _auto_food(self):
 
@@ -71,9 +71,7 @@ class Assistant(Script):
             food = self.cg.items.first_food
             if food and food.food_restore <= self.cg.player.mp_lost + 50:
                 self.cg.items.use(food)
-                time.sleep(0.5)
                 self.cg.mem.decode_send("mjCv 0")
-                time.sleep(0.5)
                 self.cg.mem.decode_send(
                     f"iVfo {self.cg.map.x_62} {self.cg.map.y_62} {food.index_62} 0"
                 )
@@ -103,8 +101,7 @@ class SpeedBattle(Script):
     def _on_update(self):
         if self.cg.state in (9, 10) and self.cg.state2 in (5, 1, 2, 4, 6, 11):
             player = self.cg.battle.player
-            if player and (player.is_uncontrolled or player.hp == 0):
-
+            if player and (player.is_uncontrolled or player.hp == 0) and self.cg.battle.is_waiting_anime:
                 logging.debug("玩家受控或死亡，停止高速战斗！")
                 logging.debug(player._data_list)
                 self.cg.battle_speed = 0

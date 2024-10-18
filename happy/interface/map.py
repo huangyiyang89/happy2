@@ -8,6 +8,7 @@ import hashlib
 from happy.interface.mem import CgMem, InterfaceBase
 from happy.util.path_search import merge_path, a_star_search
 from happy.util import b62, log_execution_time
+from threading import Lock
 
 
 # region __map_object_dict
@@ -209,7 +210,7 @@ class MapFile:
                         if flag == 0:
                             full_downloaded_temp = False
 
-                        # flag == 49162是出口切换地图 49155是水晶传送和上下楼梯 49152正常通过 49154遭遇战斗 0为未探索
+                        # flag == 49162是出口切换地图 49155是水晶传送和上下楼梯 49152正常通过 49154遭遇战斗 49163房屋 0为未探索
                         if flag == 49155:
                             self._transports.append((j, i, object_id))
 
@@ -218,9 +219,11 @@ class MapFile:
                             and flag != 49155
                             and flag != 49152
                             and flag != 49154
+                            and flag != 49163
                             and flag != 0
                         ):
-                            logging.error("flag 未找到")
+
+                            logging.error(f"flag error {flag}, {j}, {i}")
 
                         # 地上不可通过物件
                         if object_id in _object_dict:
@@ -246,7 +249,7 @@ class MapFile:
         self.flag_data[南][东] 0表示可通过 1表示有障碍"""
         return self._flag_data
 
-    def check(self, x: int | tuple, y: int = None):
+    def check_flag(self, x: int | tuple, y: int = None):
         if y is None:
             if isinstance(x, tuple) and len(x) == 2:
                 x, y = x
@@ -398,6 +401,7 @@ class Map(InterfaceBase):
         self._last_start = None
         self._last_searched_path = []
         self._last_map_id = 0
+        self._search_counter = 0
         self._last_file: MapFile = None
         self._last_dest = None
         self._last_request_time = 0
@@ -450,16 +454,15 @@ class Map(InterfaceBase):
 
         if self._last_file and path == self._last_file.path:
             return self._last_file
+
+        if path in self._map_files_cache:
+            self._last_file = self._map_files_cache[path]
         else:
-            if path in self._map_files_cache:
-                self._last_file = self._map_files_cache[path]
-                return self._last_file
-            else:
-                file = MapFile(path)
-                self._last_file = file
-                if not file.is_dungeon:
-                    self._map_files_cache[path] = file
-                return file
+            self._last_file = MapFile(path)
+            if not self._last_file.is_dungeon:
+                self._map_files_cache[path] = self._last_file
+
+        return self._last_file
 
     def find_transports(self, count=2):
         """如果找到的出入口小于count，会请求和读取地图数据"""
@@ -473,47 +476,46 @@ class Map(InterfaceBase):
         """
         未找到路径会自动调用self.request_download() 和 self.file.read()
         """
-        if y is None:
-            destination = x
-        else:
-            destination = (x, y)
-
+        destination = x if y is None else (x, y)
         start = self.location
+        map_id = self.id
 
         # 使用缓存结果
-        # 参数完全相同，直接使用上次结果
         if (
-            start == self._last_start
-            and self.id == self._last_map_id
+            self._search_counter < 50
+            and map_id == self._last_map_id
             and destination == self._last_dest
         ):
-            path = self._last_searched_path
-            merged_path = merge_path(path, start)
-            return merged_path
+            # 起点相同
+            if start == self._last_start:
+                path = self._last_searched_path
+            # 起点在上次搜索路径中
+            elif start in self._last_searched_path:
+                index = self._last_searched_path.index(start)
+                path = self._last_searched_path[index + 1 :]
+            else:
+                path = None
 
-        # 当前起点在上次路径中
-        if (
-            start in self._last_searched_path
-            and self.id == self._last_map_id
-            and destination == self._last_dest
-        ):
-            index = self._last_searched_path.index(start)
-            path = self._last_searched_path[index + 1 :]
-            merged_path = merge_path(path, start)
-            return merged_path
+            if path:
+                merged_path = merge_path(path, start)
+                self._search_counter += 1
+                return merged_path
+
+        self._search_counter = 0
 
         # 重新计算路径
         logging.debug(
-            f"Search map:{self.id} start:{start} dest:{destination},last:{self._last_map_id},{self._last_start},{self._last_dest}"
+            f"Search map:{map_id} start:{start} dest:{destination},last:{self._last_map_id},{self._last_start},{self._last_dest}"
         )
         path = a_star_search(self.file.flag_data, start, destination)
         if path:
             self._last_start = start
             self._last_dest = destination
-            self._last_map_id = self.id
+            self._last_map_id = map_id
             self._last_searched_path = path
             merged_path = merge_path(path, start)
             return merged_path
+
         logging.debug("Search not found path! request_download and read")
         self.request_download()
         self.file.read()
@@ -536,10 +538,18 @@ class Map(InterfaceBase):
                 self.mem.decode_send(
                     f"UUN 1 {b62(self.id)} {b62(i*size)} {b62(j*size)} {b62(i*size+size)} {b62(j*size+size)}"
                 )
-                time.sleep(0.1)
+                time.sleep(0.2)
         self._last_request_time = time.time()
 
     def distance_to(self, x: int | tuple, y: int = None):
         if y is None:
             x, y = x
         return abs(self.x - x) + abs(self.y - y)
+
+    def in_area(self, x1, y1, x2, y2=None):
+        """左()下到右上，如果y2为None则x2为半径"""
+        if y2 is None:
+            radius = x2
+            return abs(self.x - x1) <= radius and abs(self.y - y1) <= radius
+
+        return x1 <= self.x <= x2 and y1 <= self.y <= y2

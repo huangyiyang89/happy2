@@ -7,7 +7,8 @@ class Dialog(LocationBase):
 
     @property
     def is_open(self):
-        if self.mem.read_int(0x00C1D114) > 10 or self.type != -1:
+        #self.mem.read_int(0x00C1D114) > 10 or 
+        if self.type != -1:
             return True
         return False
 
@@ -102,7 +103,7 @@ class Dialog(LocationBase):
             f"xD {self._x_62} {self._y_62} {self.model_62} {self.npc_id_62} {action}"
         )
         self.mem.decode_send(action)
-        time.sleep(0.5)
+        time.sleep(1)
 
     def drop_ensure(self):
         if "確定丟棄" in self.content:

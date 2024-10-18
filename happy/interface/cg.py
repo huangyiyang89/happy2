@@ -147,15 +147,13 @@ class Cg:
             self.nav_to(x, y)
 
     def click(self, direction: Literal["A", "B", "C", "D", "E", "F", "G", "H"]):
-        """鼠标右键点击交互
-        Args:
-            direction: A-H,顺时针表示左上,上,右上,右,右下,下,左下,左
+        """鼠标右键点击交互 Sleep 0.5s, A-H,表示左上,上,右上,右,右下,下,左下,左
         """
         if self.state!=9 or self.state2 != 3:
             return False
         
         self.mem.decode_send(f"zA {self.map.x_62} {self.map.y_62} {direction} 0")
-        time.sleep(0.5)
+        time.sleep(1)
 
     def click_to(self, x: int | tuple, y: int = None):
         """如果距离足够，点击目标位置"""
@@ -270,7 +268,7 @@ class Cg:
     def buy(self, item_index: int, amount: int = 1, seller_name=""):
         if self.dialog.is_seller and seller_name in self.dialog.seller_name:
             self.request(f"0 {item_index}\\\\z{amount}", 335)
-            time.sleep(0.5)
+            time.sleep(1)
 
     def reply(self, context: str = "", action: int | str = 0):
         """
@@ -285,6 +283,13 @@ class Cg:
             self.mem.write_int(0x00F62954, 7)
         self.mem.decode_send("lO")
         time.sleep(1)
+
+
+    def find_script(self,name):
+        for script in self._scripts:
+            if script.name == name:
+                return script
+        return None
 
     def hunt_message(self):
         text = self.mem.read_string(0x0019CBE0, 100)
@@ -370,10 +375,10 @@ class Cg:
             self.mem.write_int(0x00F62954, 1)
             time.sleep(3)
 
-    def set_popup_explorer_disable(self, enable=True):
+    def set_popup_explorer(self, enable=True):
         """禁止游戏弹出网页"""
         pointer = self.mem.read_int(0x0053E220)
         if enable:
-            self.mem.write_bytes(pointer, bytes.fromhex("C2 04 00"), 3)
-        else:
             self.mem.write_bytes(pointer, bytes.fromhex("8B FF 55"), 3)
+        else:
+            self.mem.write_bytes(pointer, bytes.fromhex("C2 04 00"), 3)

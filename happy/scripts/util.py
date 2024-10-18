@@ -1,6 +1,6 @@
 from happy.interface import Script
 import logging
-
+import time
 
 class Logger(Script):
 
@@ -22,3 +22,15 @@ class Logger(Script):
         if dialog_content and dialog_content != self.last_content:
             logging.info(dialog_content.replace("\n", ""))
             self.last_content = dialog_content
+
+
+class Neixin(Script):
+
+    def _on_init(self):
+        self.name = "内心找寻"
+    
+    def _on_not_battle(self):
+        print("---------------------------------------")
+        for unit in self.cg.map.units:
+            print(f"{unit.name}:{unit.location}")
+        time.sleep(2)

@@ -1,5 +1,6 @@
 import time
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from happy.interface import Cg
 
@@ -7,23 +8,20 @@ if TYPE_CHECKING:
 class Script:
 
     def __init__(self, cg: "Cg") -> None:
-        self.name = "Unnamed script"
+        self.name = "noname script"
         self.cg = cg
         self.enable = False
         self._start_has_run = False
         self._stop_has_run = False
         self._last_map_id = 0
-        self._last_time = time.time()
+        self._last_location = (0, 0)
+        self._stuck_counter = 0
+        self._start_time = 0
+        self._start_gold = 0
         self._on_init()
 
-    def time_is_up(self,second:float=1.0):
-        if time.time() - self._last_time > second:
-            self._last_time = time.time()
-            return True
-        return False
-
     def update(self):
-        
+
         if not self.enable:
             if not self._stop_has_run:
                 self._on_stop()
@@ -33,10 +31,11 @@ class Script:
 
         if not self._start_has_run:
             self._on_start()
+            self._start_time = time.time()
+            self._start_gold = self.cg.items.gold
             self._start_has_run = True
             self._stop_has_run = False
 
-        
         self._on_update()
 
         if self.cg.state == 9 and self.cg.state2 == 3:
@@ -51,11 +50,16 @@ class Script:
                 self._on_moving()
             else:
                 self._on_not_moving()
+                if self._last_location == self.cg.map.location:
+                    self._stuck_counter += 1
+                    if self._stuck_counter >= 100:
+                        self._on_stuck()
+                else:
+                    self._stuck_counter = 0
 
         if self.cg.battle.is_battling:
             self._on_battle()
 
-            
     def _on_init(self):
         pass
 
@@ -86,48 +90,17 @@ class Script:
     def _on_dialog(self):
         pass
 
+    def _on_stuck(self):
+        pass
 
-class ScriptManager:
+    @property
+    def efficiency(self):
+        if self._start_time == 0:
+            return 0
 
-    def __init__(self, cg: "Cg") -> None:
-        self.cg = cg
-        self._scripts = []
-
-    def add(self, script: Script):
-        self._scripts.append(script)
-
-    def update(self):
-        for script in self._scripts:
-            script.update()
+        time_cost = time.time() - self._start_time
+        gold_earned = self.cg.items.gold - self._start_gold
+        if time_cost > 0:
+            return gold_earned / time_cost * 3600
+        return 0
     
-    def remove(self, script: Script):
-        self._scripts.remove(script)
-
-    def clear(self):
-        self._scripts.clear()
-
-    def __iter__(self):
-        return iter(self._scripts)
-    
-    def __len__(self):
-        return len(self._scripts)
-    
-    def __getitem__(self, index):
-        return self._scripts[index]
-    
-    def __delitem__(self, index):
-        del self._scripts[index]
-
-    def __contains__(self, script: Script):
-        return script in self._scripts
-    
-    def __reversed__(self):
-        return reversed(self._scripts)
-    
-    def __repr__(self):
-        return f"ScriptManager(scripts={self._scripts})"
-    
-    def __str__(self):
-        return f"ScriptManager(scripts={self._scripts})"
-    
-
