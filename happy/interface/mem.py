@@ -87,6 +87,25 @@ class CgMem(pymem.Pymem):
         account = self.read_string(0x00D15644)
         logging.debug(f"{account}, decode_send: "+content)
 
+    def close_handle(self):
+        # jump hook
+        self.write_int(0x00507780, 0x0799CBE9)
+        # 汇编指令写入
+        self.write_bytes(
+            0x00581150,
+            bytes.fromhex(
+                "FF 25 D0 11 58 00 8B 05 7C 8A 92 00 83 E8 04 50 FF 15 24 E1 53 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 C7 05 D0 11 58 00 C0 11 58 00 C3 90 8B 05 18 A7 57 00 E9 BA 65 F8 FF 90 90 90 90 90 56 11 58 00"
+            ),
+            132,
+        )
+        # 触发说话
+        # 聊天栏字符长度
+        self.write_int(0x00613904, 1)
+        # 回车
+        self.write_int(0x0072BD15, 26)
+        # 延迟防止不触发
+        time.sleep(0.2)
+
 class InterfaceBase:
     def __init__(self, mem: CgMem):
         self.mem = mem

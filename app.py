@@ -1,6 +1,5 @@
 import happy
 import logging
-import asyncio
 from nicegui import ui
 
 import happy

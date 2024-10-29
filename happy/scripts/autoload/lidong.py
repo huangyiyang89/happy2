@@ -10,6 +10,7 @@ class Lidong(Script):
         self.name = "里洞魔石"
         self._sell_record = []
         self._move_record = [(0, 0, 0), (1, 1, 1), (2, 2, 2)]
+        self.should_go_back = False
 
     def _on_start(self):
         self._sell_record = []
@@ -180,24 +181,28 @@ class Lidong(Script):
                 self.cg.nav_to(25, 19)
             return
 
-        if "里歐波多洞窟地下13層" in self.cg.map.name:
-            transport_positions = {(x, y) for x, y, _ in self.cg.map.find_transports()}
-            for _ in range(30):
-                dest = (
-                    self.cg.map.x + random.randint(-1, 1),
-                    self.cg.map.y + random.randint(-1, 1),
-                )
-                if dest not in transport_positions and self.cg.map.file.check_flag(dest) and dest != self.cg.map.location:
-                    break
-            self.cg.go_to(dest)
-            return
-
         if "里歐波多洞窟地下14層" in self.cg.map.name:
-            self.cg.nav_dungeon(back=True)
+            self.should_go_back = True
+            self.cg.nav_dungeon(self.should_go_back)
+            return
+        
+        if self.cg.map.name in ["里歐波多洞窟地下1層","里歐波多洞窟地下9層"]:
+            # transport_positions = {(x, y) for x, y, _ in self.cg.map.find_transports()}
+            # for _ in range(30):
+            #     dest = (
+            #         self.cg.map.x + random.randint(-1, 1),
+            #         self.cg.map.y + random.randint(-1, 1),
+            #     )
+            #     if dest not in transport_positions and self.cg.map.file.check_flag(dest) and dest != self.cg.map.location:
+            #         break
+            # self.cg.go_to(dest)
+            self.should_go_back = False
+            self.cg.nav_dungeon(self.should_go_back)
             return
 
+        
         if "里歐波多洞窟地下" in self.cg.map.name:
-            self.cg.nav_dungeon()
+            self.cg.nav_dungeon(self.should_go_back)
             return
 
         self.cg.tp()

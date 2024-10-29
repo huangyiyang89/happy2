@@ -53,7 +53,11 @@ class Script:
                 if self._last_location == self.cg.map.location:
                     self._stuck_counter += 1
                     if self._stuck_counter >= 100:
-                        self._on_stuck()
+                        if self.cg.state == 10 and self.cg.state2 == 2 and self.cg.map.id in [30010,1000]:
+                            self.cg.mem.write_int(0x00F62954, 7)
+                            time.sleep(1)
+                        else:
+                            self._on_stuck()
                 else:
                     self._stuck_counter = 0
 
