@@ -35,14 +35,9 @@ def md5_file(file_path):
     return md5.hexdigest()
 
 
-a = happy.open("")
-
-
-cgs = happy.open_all()
-for cg in cgs:
-    #cg.click('A')
-    cg.mem.close_handle()
-    print(cg.account)
+cg = happy.open("getmac05")
+cg.tp()
+    
 
 # cg.mem.decode_send(f"UUN 1 {b62(cg.map.id)} {b62(25)} {b62(15)} {b62(50)} {b62(40)}")
 # injury 4096 店铺

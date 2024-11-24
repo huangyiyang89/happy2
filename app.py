@@ -1,12 +1,21 @@
 import happy
 import logging
 from nicegui import ui
-
 import happy
-import pkgutil
 import happy.interface
 import happy.scripts
-import happy.scripts.autoload
+import happy.scripts.farm
+import happy.scripts.farm.duoladong
+import happy.scripts.farm.hadong
+import happy.scripts.farm.lidong
+import happy.scripts.farm.yanhuang
+import happy.scripts.general
+import happy.scripts.general.assistant
+import happy.scripts.general.autobattle
+import happy.scripts.general.speed
+import happy.scripts.levelup
+import happy.scripts.mission
+import happy.scripts.mission.fushengruomeng
 
 
 logging.basicConfig(
@@ -20,26 +29,22 @@ def update_ui_container():
     """更新UI元素"""
 
     ui_container.clear()
+    slot = 0
     with ui_container:
         for cg in happy.open_all():
-            cg.load_script(happy.scripts.AutoBattle)
-            cg.load_script(happy.scripts.SpeedBattle)
-            cg.load_script(happy.scripts.SpeedMove)
-            cg.load_script(happy.scripts.Assistant)
-            cg.load_script(happy.scripts.AutoEncounter)
-            cg.load_script(happy.scripts.LevelUp)
-            cg.load_script(happy.scripts.AutoMaze)
-            cg.load_script(happy.scripts.mission.Szdjz)
-            cg.load_script(happy.scripts.util.Logger)
-            cg.load_script(happy.scripts.util.Neixin)
-
-            for _, module_name, _ in pkgutil.iter_modules(happy.scripts.autoload.__path__):
-                module = __import__(f"happy.scripts.autoload.{module_name}", fromlist=["*"])
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if isinstance(attr, type) and issubclass(attr, happy.interface.Script) and attr is not happy.interface.Script:
-                        cg.load_script(attr)
+            slot += 1
+            cg.window.move_to_slot(slot)
             
+            cg.load_script(happy.scripts.general.assistant.Assistant)
+            cg.load_script(happy.scripts.general.autobattle.AutoBattle)
+            cg.load_script(happy.scripts.general.speed.SpeedBattle)
+            cg.load_script(happy.scripts.general.speed.SpeedMove)
+            cg.load_script(happy.scripts.levelup.LevelUp)
+            cg.load_script(happy.scripts.farm.lidong.Lidong)
+            cg.load_script(happy.scripts.farm.yanhuang.Yanhuang)
+            cg.load_script(happy.scripts.farm.duoladong.Duoladong)
+
+
             with ui.card():
                 ui.label("Player Name").text = cg.player.name
                 ui.label("Account").text = cg.account

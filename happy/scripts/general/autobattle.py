@@ -10,7 +10,7 @@ class AutoBattle(Script):
     def _on_battle(self):
 
         if self.cg.battle.is_player_second_turn:
-            self.cg.battle.player.attack()
+            self.cg.battle.player.attack(self.cg.battle.units.random_choice_enemy)
             return
 
         if self.cg.battle.is_player_turn:
@@ -32,7 +32,7 @@ class AutoBattle(Script):
                     return
             
             if len(self.cg.battle.units.enemies) == 1:
-                self.cg.battle.player.attack()
+                self.cg.battle.player.attack(self.cg.battle.units.random_choice_enemy)
                 return
 
             self.cg.battle.player.cast_default(self.cg.battle.units)

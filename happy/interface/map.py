@@ -553,3 +553,11 @@ class Map(InterfaceBase):
             return abs(self.x - x1) <= radius and abs(self.y - y1) <= radius
 
         return x1 <= self.x <= x2 and y1 <= self.y <= y2
+
+    @property
+    def in_city(self):
+        return self.id in [1000,30010,1164]
+    
+    @property
+    def in_hospital(self):
+        return self.id in [1111,1112,30105]

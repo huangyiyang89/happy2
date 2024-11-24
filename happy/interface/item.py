@@ -129,14 +129,13 @@ class ItemCollection(LocationBase):
                 self.mem.decode_send(
                     f"QpfE {self._x_62} {self._y_62} 0 {item.index_62}"
                 )
-                return
             if isinstance(item, str):
                 item_to_find = self.find(item)
                 if item_to_find:
                     self.mem.decode_send(
                         f"QpfE {self._x_62} {self._y_62} 0 {item_to_find.index_62}"
                     )
-                return
+                    return
 
 
 

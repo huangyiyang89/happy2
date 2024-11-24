@@ -14,6 +14,7 @@ from .battle import Battle
 from .item import ItemCollection
 from .script import Script
 from .team import Team
+from .window import Window
 
 from happy.util import b62
 from happy.util.captcha import solve_captcha
@@ -30,7 +31,7 @@ class Cg:
         self.items = ItemCollection(self.mem)
         self.pets = PetCollection(self.mem)
         self.team = Team(self.mem)
-
+        self.window = Window(self.mem.process_id)
         self._last_map_id = 0
         self._thread = threading.Thread(target=self._main_loop)
         self.stopped_callback = None
@@ -53,16 +54,27 @@ class Cg:
 
     @property
     def account(self):
-        return self.mem.read_string(0x00D15644)
+        return self.mem.read_string(0x00F66572)
+
+    @account.setter
+    def account(self, value):
+        self.mem.write_string(0x00F66572, value)
+
+    @property
+    def password(self):
+        return self.mem.read_string(0x00F6653F)
+
+    @password.setter
+    def password(self, value):
+        self.mem.write_string(0x00F6653F, value)
 
     @property
     def is_moving(self) -> bool:
         return self.mem.read_int(0x0054DCB0) != 65535
 
-
     @property
     def stopped(self):
-        if not hasattr(self,"mem"):
+        if not hasattr(self, "mem"):
             return True
         return False
 
@@ -81,9 +93,9 @@ class Cg:
         del self.mem
 
     def go_to(self, x: int | tuple, y: int = None):
-        if self.state!=9 or self.state2 != 3:
+        if self.state != 9 or self.state2 != 3:
             return False
-        
+
         if y is None:
             x, y = x
         if self.map.location == (x, y):
@@ -108,27 +120,30 @@ class Cg:
 
     def nav_to(self, x: int | tuple, y: int = None):
 
-        if self.state!=9 or self.state2 != 3:
+        if self.state != 9 or self.state2 != 3:
             return False
-        
+
         if y is None:
             dest = x
         else:
             dest = (x, y)
-        
-        #已到达目的地返回True
+
+        # 已到达目的地返回True
         if self.map.location == dest:
             return True
-        
+
         path = self.map.search(dest)
         if path:
+            if self.team.is_leader and self.map.file.is_dungeon and len(path) == 1:
+                time.sleep(0.5)
+
             self.go_to(path[0])
             return True
-        
+
         return False
 
-    def nav_dungeon(self,back=False):
-        if self.state!=9 or self.state2 != 3:
+    def nav_dungeon(self, back=False):
+        if self.state != 9 or self.state2 != 3:
             return False
 
         transports = self.map.find_transports()
@@ -147,11 +162,10 @@ class Cg:
             self.nav_to(x, y)
 
     def click(self, direction: Literal["A", "B", "C", "D", "E", "F", "G", "H"]):
-        """鼠标右键点击交互 Sleep 0.5s, A-H,表示左上,上,右上,右,右下,下,左下,左
-        """
-        if self.state!=9 or self.state2 != 3:
+        """鼠标右键点击交互 Sleep 0.5s, A-H,表示左上,上,右上,右,右下,下,左下,左"""
+        if self.state != 9 or self.state2 != 3:
             return False
-        
+
         self.mem.decode_send(f"zA {self.map.x_62} {self.map.y_62} {direction} 0")
         time.sleep(1)
 
@@ -197,9 +211,9 @@ class Cg:
 
     def dialogue_to(self, *coordinate):
         """如果没有对话框，click_to(x,y)"""
-        if self.state!=9 or self.state2 != 3:
+        if self.state != 9 or self.state2 != 3:
             return False
-        
+
         if self.dialog.is_open:
             return False
         # self.dialog.close()
@@ -279,13 +293,12 @@ class Cg:
         self.dialog.reply(context, action)
 
     def tp(self):
-        if self.state == 10:
-            self.mem.write_int(0x00F62954, 7)
         self.mem.decode_send("lO")
         time.sleep(1)
+        if self.state == 10:
+            self.mem.write_int(0x00F62954, 7)
 
-
-    def find_script(self,name):
+    def find_script(self, name):
         for script in self._scripts:
             if script.name == name:
                 return script

@@ -87,6 +87,10 @@ class CgMem(pymem.Pymem):
         account = self.read_string(0x00D15644)
         logging.debug(f"{account}, decode_send: "+content)
 
+    def close_send_mac(self):
+        #@MA_C搜索  00403DA9
+        self.write_int(0x0447DBFA,0)
+
     def close_handle(self):
         # jump hook
         self.write_int(0x00507780, 0x0799CBE9)

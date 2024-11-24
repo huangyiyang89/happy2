@@ -34,19 +34,21 @@ class Lidong(Script):
 
     def _on_not_moving(self):
         self._stuck_detect()
+
         if self.cg.map.name in ["亞諾曼城", "中央醫院"]:
             if self.cg.items.count > 10:
                 self._go_to_sell()
                 return
             if (
                 self.cg.player.hp_per != 100
-                or self.cg.player.mp_per != 100
+                or (self.cg.player.level>=20 and self.cg.player.mp_per != 100)
                 or not self.cg.pets.full_state
             ):
                 self._go_to_heal()
                 return
 
-        if not self.cg.items.has_weapon:
+        # 武器损坏，买武器
+        if not self.cg.items.has_weapon and self.cg.player.level >= 10 and self.cg.items.gold>=600:
             weapon = self.cg.items.find("弓")
             if weapon:
                 self.cg.items.use(weapon)
@@ -68,7 +70,7 @@ class Lidong(Script):
 
         if (
             self.cg.player.hp_per < 30
-            or self.cg.player.mp < 40
+            or (self.cg.team.count == 0 and self.cg.player.mp < 40)
             or (self.cg.pets.on_battle and self.cg.pets.on_battle.hp_per < 30)
         ):
             self._go_to_heal()
@@ -119,11 +121,9 @@ class Lidong(Script):
             == self._move_record[2][1:]
         ):
             logging.warning(
-                f"{self.cg.account} {self.cg.player.name} 角色疑似卡死,{self.cg.map.name} {self.cg.map.x},{self.cg.map.y} TP. \n \
-                last_map_id {self._last_map_id} , last_start {self.cg.map._last_start},last_dest {self.cg.map._last_dest} ,last_path {self.cg.map._last_searched_path} \n \
-                "
+                f"{self.cg.account} {self.cg.player.name} 角色疑似卡死,{self.cg.map.name} {self.cg.map.x},{self.cg.map.y} TP"
             )
-            
+
             self.cg.tp()
             self._move_record = [(0, 0, 0), (1, 1, 1), (2, 2, 2)]
 
@@ -162,6 +162,9 @@ class Lidong(Script):
             return
 
         if self.cg.map.name == "德威特島":
+            if self.cg.player.level < 14:
+                self.cg.go_to(183 + random.randint(-1, 1), 373 + random.randint(-1, 1))
+                return
             self.cg.nav_to(129, 295)
             return
 
@@ -185,8 +188,8 @@ class Lidong(Script):
             self.should_go_back = True
             self.cg.nav_dungeon(self.should_go_back)
             return
-        
-        if self.cg.map.name in ["里歐波多洞窟地下1層","里歐波多洞窟地下9層"]:
+
+        if self.cg.map.name in ["里歐波多洞窟地下1層", "里歐波多洞窟地下9層"]:
             # transport_positions = {(x, y) for x, y, _ in self.cg.map.find_transports()}
             # for _ in range(30):
             #     dest = (
@@ -200,7 +203,6 @@ class Lidong(Script):
             self.cg.nav_dungeon(self.should_go_back)
             return
 
-        
         if "里歐波多洞窟地下" in self.cg.map.name:
             self.cg.nav_dungeon(self.should_go_back)
             return
@@ -254,6 +256,3 @@ class Lidong(Script):
             self.cg.buy(3)
         else:
             self.cg.tp()
-
-
-

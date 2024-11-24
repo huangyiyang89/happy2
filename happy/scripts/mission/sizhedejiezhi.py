@@ -1,6 +1,6 @@
 from happy.interface import Script
 
-class Szdjz(Script):
+class Sizhedejiezhi(Script):
     """死者的戒指任务，新手任务"""
     def _on_init(self):
         self.name = "新手任务"

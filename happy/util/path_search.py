@@ -89,14 +89,14 @@ def reconstruct_path(current: Node):
     return path[::-1]
 
 def merge_path(paths, start):
-    if len(paths) < 2:
-        return paths  # 如果路径点数少于2，只返回终点
+    if len(paths) < 3:
+        return paths  # 如果路径点数少于3，只返回终点
 
     # 初始化简化后的路径（不包含起点）
     merged_path = []
 
     # 遍历路径的每个点，尝试简化路径
-    for i in range(0, len(paths) - 1):
+    for i in range(0, len(paths) - 2):
         A = (
             start if not merged_path else merged_path[-1]
         )  # 上一个已简化的点（起点或路径中的最后一个点）
@@ -107,7 +107,8 @@ def merge_path(paths, start):
         if not (B[1] - A[1]) * (C[0] - B[0]) == (C[1] - B[1]) * (B[0] - A[0]):
             merged_path.append(B)
 
-    # 添加最后一个点（终点）
+    # 添加最后两个点
+    merged_path.append(paths[-2])
     merged_path.append(paths[-1])
 
     return merged_path

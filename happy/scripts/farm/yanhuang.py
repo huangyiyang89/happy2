@@ -89,84 +89,13 @@ class Yanhuang(Script):
                     time.sleep(1)
             return
 
-    def _go_to_S2(self):
-        if self.cg.map.name == "法蘭城" and self.cg.map.location == (162, 130):
-            return True
-        if self.cg.map.name == "法蘭城" and self.cg.map.location == (233, 78):
-            self.cg.click("A")
-        else:
-            self.cg.tp()
-    
-
-    def _go_to_W2(self):
-        if self.cg.map.name == "法蘭城" and self.cg.map.location == (72, 123):
-            return True
-        if self.cg.map.name == "法蘭城" and self.cg.map.location == (162, 130):
-            self.cg.click("C")
-        if self.cg.map.name == "法蘭城" and self.cg.map.location == (233, 78):
-            self.cg.click("A")
-        else:
-            self.cg.tp()
-
-    def _go_to_sell(self):
-        if self.cg.map.name == "法蘭城" and self.cg.map.location == (232,82):
-            if self.cg.dialogue_to(232,83):
-                self._print_efficient_record()
-        elif self.cg.map.name == "法蘭城" and self.cg.map.in_area(228,74,238,87):
-            self.cg.go_to(232,82)
-        else:
-            self.cg.tp()
-
-    def _go_to_hospital(self):
-        if self.cg.map.name == "法蘭城" and self.cg.map.in_area(210,60,238,87):
-            self.cg.nav_to(221, 83)
-        else:
-            self.cg.tp()
-
-    def _go_to_heal(self):
-        if self.cg.map.name == "醫院":
-            self.cg.nav_to(8, 34)
-            self.cg.dialogue_to(7, 33)
-        else:
-            self._go_to_hospital()
-
-    def _go_to_cure(self):
-        if self.cg.map.name == "醫院":
-            self.cg.nav_to(12, 19)
-            if self.cg.dialogue_to(11, 18):
-                logging.info(f"{self.cg.account} 受伤，已治疗。")
-        else:
-            self._go_to_hospital()
-
-    def _go_to_buy_crystal(self):
-        if self.cg.map.name == "法蘭城" and self.cg.map.in_area(65,71,95,130):
-            self.cg.nav_to(94, 78)
-        elif self.cg.map.name == "達美姊妹的店":
-            self.cg.nav_to(17, 18)
-            self.cg.dialogue_to(19, 18)
-            self.cg.buy(11)
-        else:
-            self.cg.tp()
-
     def _go_to_buy_weapon(self):
-        if self.cg.map.name == "法蘭城" and self.cg.map.in_area(146,122,164,134):
+        if self.cg.map.name == "法蘭城" and self.cg.map.in_area(146,122,170,160):
             self.cg.go_to(151, 122)
             self.cg.dialogue_to(150, 122)
             self.cg.buy(3)
         else:
-            self._go_to_S2()
-
-    def _go_to_transports(self):
-        if self.cg.map.name == "啟程之間":
-            return True
-        if self.cg.map.name == "法蘭城" and self.cg.map.in_area(145,100,164,134):
-            self.cg.nav_to(153, 100)
-        elif self.cg.map.name == "里謝里雅堡":
-            self.cg.go_to(41,50)
-        elif self.cg.map.name == "里謝里雅堡 1樓":
-            self.cg.nav_to(45, 20)
-        else:
-            self._go_to_S2()
+            self._go_to_next_transport()
 
     def _go_to_qili(self):
         if self.cg.map.name == "奇利村的傳送點":
@@ -177,7 +106,7 @@ class Yanhuang(Script):
             self.cg.reply("這裡是往奇利村的傳送點")
             self.cg.reply("要使用嗎？")
         else:
-            self._go_to_transports()
+            self._go_to_transfer_station()
 
     def _go_to_dungeon(self):
         if self.cg.map.name == "炎黃洞窟":

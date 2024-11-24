@@ -12,6 +12,7 @@ class Duoladong(Script):
     def _on_start(self):
         self.cg.set_auto_login()
         self.cg.set_popup_explorer(False)
+        self.should_go_back=False
 
     def _on_stop(self):
         self.cg.set_auto_login(False)
@@ -20,16 +21,17 @@ class Duoladong(Script):
     def _on_update(self):
         self.cg.solve_if_captch()
         self.cg.retry_if_login_failed()
+       
 
     @property
     def _should_sell(self):
-        if self.cg.map.name in ["亞諾曼城"]:
+        if self.cg.map.in_city:
             return self.cg.items.count > 10
         return self.cg.items.count == 20
 
     @property
     def _should_heal(self):
-        if self.cg.map.name in ["亞諾曼城", "中央醫院"]:
+        if self.cg.map.in_city or self.cg.map.in_hospital:
             return (
                 self.cg.player.hp_per != 100
                 or self.cg.player.mp_per != 100
@@ -52,7 +54,7 @@ class Duoladong(Script):
     @property
     def _should_buy_crystal(self):
         if not self.cg.items.crystal:
-            crystal = self.cg.items.find("地水的水晶")
+            crystal = self.cg.items.find("火風的水晶")
             if crystal:
                 self.cg.items.use(crystal)
             else:
@@ -76,59 +78,10 @@ class Duoladong(Script):
     def _expected_team_count(self):
         return int(self.cg.player.customize_title)
 
-    def _go_to_sell(self):
-        if self.cg.map.name == "亞諾曼城":
-            self.cg.nav_to(132, 133)
-            if self.cg.dialogue_to(133, 132):
-                logging.info(f"{self.cg.account} 效率：{self.efficiency} 金币：{self.cg.items.gold}")
-        else:
-            self.cg.tp()
-
-    def _go_to_hospital(self):
-        if self.cg.map.name == "亞諾曼城":
-            self.cg.nav_to(116, 134)
-        else:
-            self.cg.tp()
-
-    def _go_to_heal(self):
-        if self.cg.map.name == "中央醫院":
-            self.cg.nav_to(13, 23)
-            self.cg.dialogue_to(14, 22)
-        else:
-            self._go_to_hospital()
-
-    def _go_to_cure(self):
-        if self.cg.map.name == "中央醫院":
-            self.cg.nav_to(9, 7)
-            if self.cg.dialogue_to(10, 6):
-                logging.info(f"{self.cg.account} 正在治疗。")
-        else:
-            self._go_to_hospital()
-
-    def _go_to_buy_crystal(self):
-        if self.cg.map.name == "亞諾曼城":
-            self.cg.nav_to(97, 128)
-        elif self.cg.map.name == "命運小屋":
-            self.cg.nav_to(15, 22)
-            self.cg.dialogue_to(17, 22)
-            self.cg.buy(11)
-        else:
-            self.cg.tp()
-
-    def _go_to_buy_weapon(self):
-        if self.cg.map.name == "亞諾曼城":
-            self.cg.nav_to(100, 114)
-        elif self.cg.map.name == "銳健武器店":
-            self.cg.nav_to(18, 13)
-            self.cg.dialogue_to(20, 13)
-            self.cg.buy(3)
-        else:
-            self.cg.tp()
-
     def _go_to_qishi(self):
         if self.cg.map.name == "起始之地":
             return True
-        elif self.cg.map.name == "亞諾曼城":
+        elif self.cg.map.id in [30010,1000]:
             self.cg.items.use("異界之匙")
             time.sleep(2)
             self.cg.reply("要使用異界的鑰匙")
@@ -141,10 +94,14 @@ class Duoladong(Script):
         elif self.cg.map.name == "普雷德島":
             self.cg.nav_to(563, 365)
         elif self.cg.map.name == "多拉洞":
-            if self.cg.map.in_area(78, 29, 82, 33):
-                self.cg.go_to(80 + random.randint(-1, 1), 31 + random.randint(-1, 1))
+            if self.should_go_back:
+                self.cg.nav_to(27, 74)
+                if self.cg.map.location == (27, 74):
+                    self.should_go_back=False
             else:
                 self.cg.nav_to(78, 29)
+                if self.cg.map.location == (78, 29):
+                    self.should_go_back=True
 
     def _on_not_moving(self):
         if self._should_sell:

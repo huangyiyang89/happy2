@@ -57,6 +57,13 @@ class Pet(InterfaceBase):
         #index 0 体力 1力量 2防御 3敏捷 4魔法
         self.mem.decode_send(f"kjSK {self.index} {index}")
 
+    def set_state(self, state):
+        #0 休息 1 待命 2 战斗
+        state_list = ["0"] * 5
+        state_list[self.index] = str(state)
+        state_str = " ".join(state_list)
+        self.mem.decode_send(f"LKQy {state_str}")
+
 class PetCollection(InterfaceBase):
     def __init__(self, mem: CgMem) -> None:
         super().__init__(mem)
@@ -93,3 +100,7 @@ class PetCollection(InterfaceBase):
             if pet.injury > 0:
                 return False
         return True
+
+    @property
+    def first(self):
+        return next(iter(self), None)

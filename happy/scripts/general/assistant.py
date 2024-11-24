@@ -2,9 +2,8 @@ from happy.interface import Script
 import time
 import logging
 
-
 class Assistant(Script):
-    """自动补给，自动卖东西"""
+    """自动补给，自动卖东西，自动吃喝"""
 
     def _on_init(self):
         self.name = "智能助手"
@@ -15,8 +14,11 @@ class Assistant(Script):
             "平民武器販售處",
             "旅行商人貝萊奇",
         ]
-
+        self.sell_record = []
         self._eat_food_flag = 0
+
+    def _on_update(self):
+        self.cg.solve_if_captch()
 
     def _auto_cure(self):
         if self.cg.dialog.is_doctor:
@@ -48,18 +50,25 @@ class Assistant(Script):
 
         items_str = ""
         for item in self.cg.items:
+            is_stacked_item = True if item.name in ["寵物鈴鐺","紙人娃娃","斑駁的化石"] else False
             if (
                 "魔石" in item.name
                 or "卡片" in item.name
-                or ("寵物鈴鐺" in item.name and item.count >= 40)
-                or ("紙人娃娃" in item.name and item.count >= 40)
+                or is_stacked_item
             ):
-                count = 1 if "寵物鈴鐺" in item.name else item.count
-                count = 1 if "紙人娃娃" in item.name else count
+                count = item.count // 40 if is_stacked_item else item.count
                 items_str += str(item.index) + r"\\z" + str(count) + r"\\z"
         if items_str != "":
             self.cg.request("0 " + items_str[:-3], "5o")
             time.sleep(1)
+            self.sell_record.append((time.time(),self.cg.items.gold))
+            if len(self.sell_record) >= 3:
+                time_span = self.sell_record[-1][0] - self.sell_record[-3][0]
+                gold_diff = self.sell_record[-1][1] - self.sell_record[-3][1]
+                speed = gold_diff * 3600 // time_span
+                
+                logging.info(f"{self.cg.account} {time_span//60}分钟 {gold_diff}金币 {speed}/h")
+            
 
     def _auto_food(self):
 
@@ -77,6 +86,15 @@ class Assistant(Script):
                 )
                 self._eat_food_flag = 1
 
+    def _solve_tp_stuck(self):
+        if (
+            self.cg.state == 10
+            and self.cg.state2 == 2
+            and self.cg.map.id in [1000, 30010, 1164]
+        ):
+            self.cg.mem.write_int(0x00F62954, 7)
+            time.sleep(1)
+
     def _on_dialog(self):
         self._auto_heal()
         self._auto_sell()
@@ -84,43 +102,6 @@ class Assistant(Script):
 
     def _on_battle(self):
         self._eat_food_flag = 0
-
+        
     def _on_not_battle(self):
         self._auto_food()
-
-class SpeedBattle(Script):
-
-    def _on_init(self):
-        self.name = "高速战斗"
-        self.enable = True
-        self.speed = 7
-
-    def _on_not_battle(self):
-        self.cg.battle_speed = 0
-
-    def _on_update(self):
-        if self.cg.state in (9, 10) and self.cg.state2 in (5, 1, 2, 4, 6, 11):
-            player = self.cg.battle.player
-            if player and (player.is_uncontrolled or player.hp == 0) and self.cg.battle.is_waiting_anime:
-                logging.debug("玩家受控或死亡，停止高速战斗！")
-                logging.debug(player._data_list)
-                self.cg.battle_speed = 0
-            else:
-                self.cg.battle_speed = self.speed
-
-    def _on_stop(self):
-        self.cg.battle_speed = 0
-
-
-class SpeedMove(Script):
-
-    def _on_init(self):
-        self.name = "高速移动"
-        self.speed = 125
-        self.enable = True
-
-    def _on_not_battle(self):
-        self.cg.move_speed = self.speed
-
-    def _on_stop(self):
-        self.cg.move_speed = 100
