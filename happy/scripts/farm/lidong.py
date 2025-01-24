@@ -22,7 +22,6 @@ class Lidong(Script):
         self.cg.set_popup_explorer(True)
 
     def _on_update(self):
-        self.cg.solve_if_captch()
         self.cg.retry_if_login_failed()
 
         if self.cg.state == 10 and self.cg.state2 == 2 and self.cg.map.id == 30010:
@@ -41,7 +40,7 @@ class Lidong(Script):
                 return
             if (
                 self.cg.player.hp_per != 100
-                or (self.cg.player.level>=20 and self.cg.player.mp_per != 100)
+                or (self.cg.player.level>=20 and self.cg.player.mp_per != 100 and self.cg.player.job_name != "遊民")
                 or not self.cg.pets.full_state
             ):
                 self._go_to_heal()
@@ -53,6 +52,7 @@ class Lidong(Script):
             if weapon:
                 self.cg.items.use(weapon)
             else:
+                
                 self._go_to_buy_weapon()
             return
 
@@ -70,7 +70,7 @@ class Lidong(Script):
 
         if (
             self.cg.player.hp_per < 30
-            or (self.cg.team.count == 0 and self.cg.player.mp < 40)
+            or (self.cg.team.count == 0 and self.cg.player.mp < 40 and self.cg.player.job_name != "遊民")
             or (self.cg.pets.on_battle and self.cg.pets.on_battle.hp_per < 30)
         ):
             self._go_to_heal()
@@ -162,14 +162,15 @@ class Lidong(Script):
             return
 
         if self.cg.map.name == "德威特島":
-            if self.cg.player.level < 14:
-                self.cg.go_to(183 + random.randint(-1, 1), 373 + random.randint(-1, 1))
-                return
+            # if self.cg.player.level < 14:
+            #     self.cg.go_to(183 + random.randint(-1, 1), 373 + random.randint(-1, 1))
+            #     return
             self.cg.nav_to(129, 295)
             return
 
         if self.cg.map.name == "里歐波多洞窟":
-
+            if self.cg.map.location == (5,28):
+                self.cg.go_to(5,29)
             entrance = self.cg.map.units.find(
                 name=" ", type=1, flag=4096, model_id_lt=103011
             )
@@ -209,50 +210,3 @@ class Lidong(Script):
 
         self.cg.tp()
 
-    def _go_to_sell(self):
-        if self.cg.map.name != "亞諾曼城":
-            self.cg.tp()
-        self.cg.nav_to(132, 133)
-        if self.cg.dialogue_to(133, 132):
-            self._print_efficient_record()
-
-    def _go_to_hospital(self):
-        if self.cg.map.name == "亞諾曼城":
-            self.cg.nav_to(116, 134)
-        else:
-            self.cg.tp()
-
-    def _go_to_heal(self):
-        if self.cg.map.name == "中央醫院":
-            self.cg.nav_to(13, 23)
-            self.cg.dialogue_to(14, 22)
-        else:
-            self._go_to_hospital()
-
-    def _go_to_cure(self):
-        if self.cg.map.name == "中央醫院":
-            self.cg.nav_to(9, 7)
-            if self.cg.dialogue_to(10, 6):
-                logging.info(f"{self.cg.account} 受伤，已治疗。")
-        else:
-            self._go_to_hospital()
-
-    def _go_to_buy_crystal(self):
-        if self.cg.map.name == "亞諾曼城":
-            self.cg.nav_to(97, 128)
-        elif self.cg.map.name == "命運小屋":
-            self.cg.nav_to(15, 22)
-            self.cg.dialogue_to(17, 22)
-            self.cg.buy(9)
-        else:
-            self.cg.tp()
-
-    def _go_to_buy_weapon(self):
-        if self.cg.map.name == "亞諾曼城":
-            self.cg.nav_to(100, 114)
-        elif self.cg.map.name == "銳健武器店":
-            self.cg.nav_to(18, 13)
-            self.cg.dialogue_to(20, 13)
-            self.cg.buy(3)
-        else:
-            self.cg.tp()

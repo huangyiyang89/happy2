@@ -2,6 +2,7 @@ from happy.interface import Script
 import time
 import logging
 
+
 class Assistant(Script):
     """自动补给，自动卖东西，自动吃喝"""
 
@@ -35,7 +36,8 @@ class Assistant(Script):
         ):
             return
         model = self.cg.dialog.model
-        if self.cg.player.mp_per < 100:
+
+        if self.cg.player.mp_per < 100 and self.cg.player.job_name != "遊民":
             self.cg.request("4", model + 1)
         if self.cg.player.hp_per < 100:
             self.cg.request("4", model + 3)
@@ -50,25 +52,24 @@ class Assistant(Script):
 
         items_str = ""
         for item in self.cg.items:
-            is_stacked_item = True if item.name in ["寵物鈴鐺","紙人娃娃","斑駁的化石"] else False
-            if (
-                "魔石" in item.name
-                or "卡片" in item.name
-                or is_stacked_item
-            ):
+            is_stacked_item = (
+                True if item.name in ["寵物鈴鐺", "紙人娃娃", "斑駁的化石"] and item.count>=40 else False
+            )
+            if "魔石" in item.name or "卡片" in item.name or "綠頭盔" in item.name or "紅頭盔" in item.name or is_stacked_item:
                 count = item.count // 40 if is_stacked_item else item.count
                 items_str += str(item.index) + r"\\z" + str(count) + r"\\z"
         if items_str != "":
             self.cg.request("0 " + items_str[:-3], "5o")
             time.sleep(1)
-            self.sell_record.append((time.time(),self.cg.items.gold))
+            self.sell_record.append((time.time(), self.cg.items.gold))
             if len(self.sell_record) >= 3:
-                time_span = self.sell_record[-1][0] - self.sell_record[-3][0]
-                gold_diff = self.sell_record[-1][1] - self.sell_record[-3][1]
+                time_span = self.sell_record[-1][0] - self.sell_record[1][0]
+                gold_diff = self.sell_record[-1][1] - self.sell_record[1][1]
                 speed = gold_diff * 3600 // time_span
-                
-                logging.info(f"{self.cg.account} {time_span//60}分钟 {gold_diff}金币 {speed}/h")
-            
+
+                logging.info(
+                    f"{self.cg.account} {time_span//60}分钟 {gold_diff}金币 {speed}/h"
+                )
 
     def _auto_food(self):
 
@@ -102,6 +103,6 @@ class Assistant(Script):
 
     def _on_battle(self):
         self._eat_food_flag = 0
-        
+
     def _on_not_battle(self):
         self._auto_food()

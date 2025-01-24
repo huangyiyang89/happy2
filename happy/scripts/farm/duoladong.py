@@ -19,7 +19,6 @@ class Duoladong(Script):
         self.cg.set_popup_explorer(True)
 
     def _on_update(self):
-        self.cg.solve_if_captch()
         self.cg.retry_if_login_failed()
        
 
@@ -51,28 +50,6 @@ class Duoladong(Script):
                 return True
         return False
 
-    @property
-    def _should_buy_crystal(self):
-        if not self.cg.items.crystal:
-            crystal = self.cg.items.find("火風的水晶")
-            if crystal:
-                self.cg.items.use(crystal)
-            else:
-                return True
-        return False
-
-    @property
-    def _should_cure(self):
-        return self.cg.player.injury > 0 or (
-            self.cg.pets.on_battle and self.cg.pets.on_battle.injury > 0
-        )
-
-    @property
-    def _should_be_leader(self):
-        return (
-            len(self.cg.player.customize_title) > 0
-            and self.cg.player.customize_title in "12345"
-        )
 
     @property
     def _expected_team_count(self):
@@ -122,7 +99,7 @@ class Duoladong(Script):
         if self._should_be_leader:
             if self.cg.team.count < self._expected_team_count:
                 self._go_to_qishi()
-                if self.cg.map.in_area(98, 98, 5):
+                if self.cg.map.within(98, 98, 5):
                     self.cg.go_to(97, 99)
                 return
             else:
@@ -130,7 +107,7 @@ class Duoladong(Script):
         else:
             if self.cg.team.count == 0:
                 self._go_to_qishi()
-                if self.cg.map.in_area(98, 98, 5):
+                if self.cg.map.within(98, 98, 5):
                     self.cg.go_to(98, 98)
                     self.cg.click("F")
                     self.cg.team.join()

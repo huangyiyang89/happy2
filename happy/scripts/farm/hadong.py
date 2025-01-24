@@ -16,7 +16,6 @@ class Hadong(Script):
         self.cg.set_popup_explorer(True)
 
     def _on_update(self):
-        self.cg.solve_if_captch()
         self.cg.retry_if_login_failed()
     
     def _on_not_moving(self):
@@ -102,7 +101,7 @@ class Hadong(Script):
             self.cg.tp()
 
     def _go_to_buy_weapon(self):
-        if self.cg.map.name == "法蘭城" and self.cg.map.in_area(146,122,164,134):
+        if self.cg.map.name == "法蘭城" and self.cg.map.within(146,122,164,134):
             self.cg.go_to(151, 122)
             self.cg.dialogue_to(150, 122)
             self.cg.buy(3)

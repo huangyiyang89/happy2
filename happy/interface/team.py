@@ -26,3 +26,6 @@ class Team(LocationBase):
     
     def join(self):
         self.mem.decode_send(f"zn {self._x_62} {self._y_62} 1")
+
+    def leave(self):
+        self.mem.decode_send(f"zn {self._x_62} {self._y_62} 0")

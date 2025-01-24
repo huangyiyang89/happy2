@@ -93,13 +93,16 @@ class Cg:
         del self.mem
 
     def go_to(self, x: int | tuple, y: int = None):
+        """走路到坐标x,y
+        return: 是否到达目的地, None表示未执行动作
+        """
         if self.state != 9 or self.state2 != 3:
-            return False
+            return None
 
         if y is None:
             x, y = x
         if self.map.location == (x, y):
-            return
+            return True
 
         # 走路
         # 0046845D  原A3 C8 C2 C0 00 改90 90 90 90 90
@@ -119,7 +122,10 @@ class Cg:
         self.mem.write_bytes(0x00468476, bytes.fromhex("89 0D C4 C2 C0 00"), 6)
 
     def nav_to(self, x: int | tuple, y: int = None):
-
+        """
+        导航到坐标x,y
+        return: 是否到达目的地, None表示无法到达
+        """
         if self.state != 9 or self.state2 != 3:
             return False
 
@@ -140,7 +146,7 @@ class Cg:
             self.go_to(path[0])
             return True
 
-        return False
+        return None
 
     def nav_dungeon(self, back=False):
         if self.state != 9 or self.state2 != 3:
@@ -149,6 +155,8 @@ class Cg:
         transports = self.map.find_transports()
         if len(transports) > 1:
             transports.sort(key=lambda x: x[2])
+            if self.map.name == "佈滿青苔的洞窟1樓":
+                transports.reverse()
             if "地下" in self.map.name:
                 transports.reverse()
             if back:
@@ -284,13 +292,28 @@ class Cg:
             self.request(f"0 {item_index}\\\\z{amount}", 335)
             time.sleep(1)
 
-    def reply(self, context: str = "", action: int | str = 0):
-        """
-        判断对话上下文，回复指令
+    def say(self, content: str):
+        self.mem.decode_send(f"uSr {self.map.x_62} {self.map.y_62} P|{content} 0 5 0")
 
-        未打开对话框直接return
-        """
-        self.dialog.reply(context, action)
+    def reply(self, context: str = "", action: int | str = 0):
+        """根据对话上下文，回复相应action,action为int表示第0,1,2个选项
+        return: 是否成功回复"""
+
+        if not self.dialog.is_open:
+            return False
+        if context not in self.dialog.content:
+            return False
+        if isinstance(action, int):
+            if action < len(self.dialog.selections):
+                action = self.dialog.selections[action]
+            action = b62(action)
+
+        action = (
+            f"xD {self.map.x_62} {self.map.y_62} {self.dialog.model_62} {self.dialog.npc_id_62} {action}"
+        )
+        self.mem.decode_send(action)
+        time.sleep(1)
+        return True
 
     def tp(self):
         self.mem.decode_send("lO")
@@ -320,16 +343,16 @@ class Cg:
                 success = solve_captcha(self.account, code)
             if success:
                 self.mem.write_string(0x00C32D4E, "\0\0\0\0\0\0\0\0\0\0")
-            else:
-                context = self.mem.read_string(0x00C32D40, 50)
-                logging.critical(
-                    "验证失败,账号:"
-                    + self.account
-                    + ",code:"
-                    + code
-                    + ",context:"
-                    + context
-                )
+            # else:
+                # context = self.mem.read_string(0x00C32D40, 50)
+                # logging.critical(
+                #     "验证失败,账号:"
+                #     + self.account
+                #     + ",code:"
+                #     + code
+                #     + ",context:"
+                #     + context
+                # )
 
     def set_auto_login(self, enable=True):
         # set_auto_ret_blackscreen
@@ -383,7 +406,6 @@ class Cg:
     def retry_if_login_failed(self):
         # 1没有小窗 3正在连接
         if self.state == 2 and self.state2 not in (1, 3):
-            logging.warning("%s 正在重连", self.account)
             # state2 写1
             self.mem.write_int(0x00F62954, 1)
             time.sleep(3)

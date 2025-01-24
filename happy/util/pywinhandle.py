@@ -135,7 +135,7 @@ class OBJECT_TYPE_INFORMATION(Structure):
 def query_system_handle_information():
     current_length = 0x10000
     while True:
-        if current_length > 0x4000000:
+        if current_length > 500000000:
             return
 
         class SYSTEM_HANDLE_INFORMATION_EX(Structure):
@@ -151,7 +151,7 @@ def query_system_handle_information():
         if status == STATUS_SUCCESS:
             return buf
         elif status == STATUS_INFO_LENGTH_MISMATCH:
-            current_length *= 8
+            current_length = return_length.value
             continue
         else:
             return None
@@ -219,34 +219,40 @@ def find_handles(process_ids=None, handle_names=None):
             continue
         try:
             source_process = OpenProcess(PROCESS_ALL_ACCESS | PROCESS_DUP_HANDLE | PROCESS_SUSPEND_RESUME, False, process_id)
+            if not source_process:
+                continue
         except:
             continue
-        handle_name = None
-        handle_type = None
-        duplicated_handle = duplicate_object(source_process.handle, handle)
-        if duplicated_handle:
-            basic_info = query_object_basic_info(duplicated_handle)
-            if basic_info:
-                if basic_info.NameInfoSize > 0:
-                    name_info = query_object_name_info(duplicated_handle, basic_info.NameInfoSize)
-                    if name_info:
-                        handle_name = name_info.Name.Buffer[0]
-                if basic_info.TypeInfoSize > 0:
-                    type_info = query_object_type_info(duplicated_handle, basic_info.TypeInfoSize)
-                    if type_info:
-                        handle_type = type_info.TypeName.Buffer[0]
-            close(duplicated_handle)
-        if handle_names:
-            if not handle_name:
-                continue
-            matched = False
-            for target in handle_names:
-                if target == handle_name or target in handle_name:
-                    matched = True
-                    break
-            if not matched:
-                continue
-        result.append(dict(process_id=process_id, handle=handle, name=handle_name, type=handle_type))
+
+        try:
+            handle_name = None
+            handle_type = None
+            duplicated_handle = duplicate_object(source_process.handle, handle)
+            if duplicated_handle:
+                basic_info = query_object_basic_info(duplicated_handle)
+                if basic_info:
+                    if basic_info.NameInfoSize > 0:
+                        name_info = query_object_name_info(duplicated_handle, basic_info.NameInfoSize)
+                        if name_info:
+                            handle_name = name_info.Name.Buffer[0]
+                    if basic_info.TypeInfoSize > 0:
+                        type_info = query_object_type_info(duplicated_handle, basic_info.TypeInfoSize)
+                        if type_info:
+                            handle_type = type_info.TypeName.Buffer[0]
+                close(duplicated_handle)
+            if handle_names:
+                if not handle_name:
+                    continue
+                matched = False
+                for target in handle_names:
+                    if target == handle_name or target in handle_name:
+                        matched = True
+                        break
+                if not matched:
+                    continue
+            result.append(dict(process_id=process_id, handle=handle, name=handle_name, type=handle_type))
+        finally:
+            CloseHandle(source_process)
     return result
 
 

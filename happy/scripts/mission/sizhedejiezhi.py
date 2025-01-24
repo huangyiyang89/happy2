@@ -5,6 +5,12 @@ class Sizhedejiezhi(Script):
     def _on_init(self):
         self.name = "新手任务"
 
+    def _on_not_battle(self):
+        self.cg.items.drop("試用平民迴力鏢")
+        weapon = self.cg.items.find("試用")
+        if weapon and self.cg.items.right_hand is None and self.cg.items.left_hand is None:
+            self.cg.items.use(weapon)
+
     def _on_not_moving(self):
         cg = self.cg
         if cg.is_moving or cg.battle.is_battling:
@@ -45,7 +51,9 @@ class Sizhedejiezhi(Script):
             if cg.items.find("賞賜狀"):
                 cg.nav_to(51,78)
                 cg.dialogue_to(51,79)
-                cg.reply("那是國王的賞賜信啊","1")
+                if cg.reply("那是國王的賞賜信啊","1"):
+                    cg.dialog.close()
+                    self.enable = False
         
 
 

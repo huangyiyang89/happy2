@@ -58,7 +58,7 @@ class Pet(InterfaceBase):
         self.mem.decode_send(f"kjSK {self.index} {index}")
 
     def set_state(self, state):
-        #0 休息 1 待命 2 战斗
+        """0 休息 1 待命 2 战斗"""
         state_list = ["0"] * 5
         state_list[self.index] = str(state)
         state_str = " ".join(state_list)

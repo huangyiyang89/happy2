@@ -151,7 +151,7 @@ class UnitCollection(InterfaceBase):
     def pet(self):
         return self.get(self._pet_position)
 
-    def get(self, position):
+    def get(self, position:int):
         return next(
             (unit for unit in self._update_units if unit.position == position), None
         )
